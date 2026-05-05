@@ -9,6 +9,7 @@ struct TaxPaymentsView: View {
     @State private var editorPayment: TaxPayment?
     @State private var isShowingEditor = false
     @State private var paymentToDelete: TaxPayment?
+    @State private var persistenceAlert: PersistenceAlert?
 
     private var totalCovered: Decimal {
         payments.reduce(Decimal(0)) { $0 + TaxPaymentAccounting.coveredAmount(for: $1) }
@@ -60,6 +61,11 @@ struct TaxPaymentsView: View {
             Button("Annulla", role: .cancel) { }
         } message: {
             Text(deleteMessage)
+        }
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
         }
         .appBackground()
     }
@@ -148,7 +154,22 @@ struct TaxPaymentsView: View {
         }
         modelContext.delete(payment)
         paymentToDelete = nil
-        try? modelContext.save()
+        do {
+            try Persistence.save(modelContext)
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }
 
@@ -156,11 +177,13 @@ struct TaxPaymentEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaxAccountMovement.date, order: .reverse) private var movements: [TaxAccountMovement]
+    @Query(sort: \TaxDeadline.date) private var deadlines: [TaxDeadline]
 
     let payment: TaxPayment?
 
     @State private var date: Date
     @State private var taxYearText: String
+    @State private var deadlineId: UUID?
     @State private var type: TaxPaymentType
     @State private var section: TaxPaymentSection
     @State private var code: String
@@ -168,11 +191,13 @@ struct TaxPaymentEditorSheet: View {
     @State private var compensatedText: String
     @State private var netPaidText: String
     @State private var notes: String
+    @State private var persistenceAlert: PersistenceAlert?
 
     init(payment: TaxPayment?) {
         self.payment = payment
         _date = State(initialValue: payment?.paymentDate ?? .now)
         _taxYearText = State(initialValue: "\(payment?.taxYear ?? Calendar.current.component(.year, from: .now) - 1)")
+        _deadlineId = State(initialValue: payment?.deadlineId)
         _type = State(initialValue: payment?.type ?? .balance)
         _section = State(initialValue: payment?.section ?? .erario)
         _code = State(initialValue: payment?.code ?? "1790")
@@ -226,6 +251,11 @@ struct TaxPaymentEditorSheet: View {
                         .disabled(!canSave)
                 }
             }
+            .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(persistenceAlert?.message ?? "")
+            }
             .appBackground()
         }
     }
@@ -239,6 +269,23 @@ struct TaxPaymentEditorSheet: View {
                     .background(.background.opacity(0.54), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 AppTextField(title: "Anno imposta", placeholder: "2025", text: $taxYearText, keyboard: .numberPad)
+
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Scadenza collegata")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Picker("Scadenza collegata", selection: $deadlineId) {
+                        Text("Nessuna").tag(UUID?.none)
+                        ForEach(deadlines) { deadline in
+                            Text("\(deadline.title) · \(deadline.date.formatted(date: .abbreviated, time: .omitted))")
+                                .tag(Optional(deadline.id))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background.opacity(0.54), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
 
                 VStack(alignment: .leading, spacing: 7) {
                     Text("Tipo pagamento")
@@ -304,6 +351,7 @@ struct TaxPaymentEditorSheet: View {
         let target = payment ?? TaxPayment(
             paymentDate: date,
             taxYear: Int(taxYearText) ?? Calendar.current.component(.year, from: .now) - 1,
+            deadlineId: deadlineId,
             type: type,
             section: section,
             code: code,
@@ -315,6 +363,7 @@ struct TaxPaymentEditorSheet: View {
 
         target.paymentDate = date
         target.taxYear = Int(taxYearText) ?? target.taxYear
+        target.deadlineId = deadlineId
         target.type = type
         target.section = section
         target.code = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
@@ -327,25 +376,31 @@ struct TaxPaymentEditorSheet: View {
             modelContext.insert(target)
         }
         upsertLedgerMovement(for: target)
-        try? modelContext.save()
-        dismiss()
+        do {
+            try Persistence.save(modelContext)
+            dismiss()
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
     }
 
     private func upsertLedgerMovement(for payment: TaxPayment) {
         if let movement = movements.first(where: { $0.sourceId == payment.id }) {
-            movement.date = payment.paymentDate
-            movement.amount = TaxPaymentAccounting.ledgerAmount(for: payment)
-            movement.kind = TaxPaymentAccounting.ledgerKind(for: payment)
-            movement.note = TaxPaymentAccounting.ledgerNote(for: payment)
+            TaxPaymentAccounting.updateLedgerMovement(movement, for: payment)
         } else {
-            modelContext.insert(TaxAccountMovement(
-                date: payment.paymentDate,
-                amount: TaxPaymentAccounting.ledgerAmount(for: payment),
-                kind: TaxPaymentAccounting.ledgerKind(for: payment),
-                note: TaxPaymentAccounting.ledgerNote(for: payment),
-                sourceId: payment.id
-            ))
+            modelContext.insert(TaxPaymentAccounting.makeLedgerMovement(for: payment))
         }
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }
 

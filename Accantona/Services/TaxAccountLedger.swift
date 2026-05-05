@@ -7,7 +7,7 @@ enum TaxAccountLedger {
         }
 
         let delta = movements
-            .filter { $0.date > latestSnapshot.updatedAt }
+            .filter { insertionDate(for: $0) > latestSnapshot.updatedAt }
             .reduce(Decimal(0)) { $0 + $1.amount }
 
         return latestSnapshot.balance + delta
@@ -19,7 +19,11 @@ enum TaxAccountLedger {
         }
 
         return movements
-            .filter { $0.date > latestSnapshot.updatedAt }
+            .filter { insertionDate(for: $0) > latestSnapshot.updatedAt }
             .reduce(Decimal(0)) { $0 + $1.amount }
+    }
+
+    private static func insertionDate(for movement: TaxAccountMovement) -> Date {
+        movement.createdAt ?? movement.date
     }
 }

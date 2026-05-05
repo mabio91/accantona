@@ -11,6 +11,7 @@ struct TaxParametersView: View {
     @State private var inpsText = "26,07"
     @State private var extraText = "1"
     @State private var thresholdText = "250"
+    @State private var persistenceAlert: PersistenceAlert?
 
     var body: some View {
         ScrollView {
@@ -32,6 +33,11 @@ struct TaxParametersView: View {
         }
         .navigationTitle("Parametri fiscali")
         .appBackground()
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
+        }
         .onAppear {
             if let current = parameters.first {
                 yearText = "\(current.year + 1)"
@@ -112,7 +118,11 @@ struct TaxParametersView: View {
                 minimumMarginThreshold: parseDecimal(thresholdText)
             ))
         }
-        try? modelContext.save()
+        do {
+            try Persistence.save(modelContext)
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
     }
 
     private func parsePercent(_ text: String) -> Decimal {
@@ -122,6 +132,17 @@ struct TaxParametersView: View {
 
     private func parseDecimal(_ text: String) -> Decimal {
         MoneyFormatting.parseDecimal(text)
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }
 

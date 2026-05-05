@@ -11,6 +11,7 @@ struct TaxReturnsView: View {
     @State private var editorSummary: TaxReturnSummary?
     @State private var isShowingEditor = false
     @State private var summaryToDelete: TaxReturnSummary?
+    @State private var persistenceAlert: PersistenceAlert?
 
     var body: some View {
         ScrollView {
@@ -66,12 +67,21 @@ struct TaxReturnsView: View {
                 if let summaryToDelete {
                     modelContext.delete(summaryToDelete)
                     self.summaryToDelete = nil
-                    try? modelContext.save()
+                    do {
+                        try Persistence.save(modelContext)
+                    } catch {
+                        persistenceAlert = PersistenceAlert(error)
+                    }
                 }
             }
             Button("Annulla", role: .cancel) { }
         } message: {
             Text("Rimuovero solo il riepilogo dichiarazione. Fatture, F24 e ledger restano invariati.")
+        }
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
         }
         .appBackground()
     }
@@ -103,6 +113,17 @@ struct TaxReturnsView: View {
             set: { isPresented in
                 if !isPresented {
                     summaryToDelete = nil
+                }
+            }
+        )
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
                 }
             }
         )
@@ -227,6 +248,7 @@ struct TaxReturnEditorSheet: View {
     @State private var inpsAdvancesText: String
     @State private var inpsBalanceText: String
     @State private var notes: String
+    @State private var persistenceAlert: PersistenceAlert?
 
     init(summary: TaxReturnSummary?) {
         self.summary = summary
@@ -275,6 +297,11 @@ struct TaxReturnEditorSheet: View {
                     Button("Salva") { save() }
                         .disabled(!canSave)
                 }
+            }
+            .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(persistenceAlert?.message ?? "")
             }
             .appBackground()
         }
@@ -373,8 +400,12 @@ struct TaxReturnEditorSheet: View {
         if summary == nil {
             modelContext.insert(target)
         }
-        try? modelContext.save()
-        dismiss()
+        do {
+            try Persistence.save(modelContext)
+            dismiss()
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
     }
 
     private func parseMoney(_ text: String) -> Decimal {
@@ -418,5 +449,16 @@ struct TaxReturnEditorSheet: View {
         inpsAdvancesText = "0"
         inpsBalanceText = "0"
         notes = "Dati imposta 2024 disponibili; quadro LM completo da aggiungere dopo."
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }

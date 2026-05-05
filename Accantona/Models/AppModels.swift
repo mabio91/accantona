@@ -217,14 +217,16 @@ final class TaxAccountSnapshot {
 final class TaxAccountMovement {
     var id: UUID
     var date: Date
+    var createdAt: Date?
     var amount: Decimal
     var kind: String
     var note: String
     var sourceId: UUID?
 
-    init(id: UUID = UUID(), date: Date = .now, amount: Decimal, kind: String, note: String = "", sourceId: UUID? = nil) {
+    init(id: UUID = UUID(), date: Date = .now, createdAt: Date = .now, amount: Decimal, kind: String, note: String = "", sourceId: UUID? = nil) {
         self.id = id
         self.date = date
+        self.createdAt = createdAt
         self.amount = amount
         self.kind = kind
         self.note = note
@@ -237,6 +239,7 @@ final class TaxPayment {
     var id: UUID
     var paymentDate: Date
     var taxYear: Int
+    var deadlineId: UUID?
     var typeRaw: String
     var sectionRaw: String
     var code: String
@@ -267,6 +270,7 @@ final class TaxPayment {
         id: UUID = UUID(),
         paymentDate: Date = .now,
         taxYear: Int,
+        deadlineId: UUID? = nil,
         type: TaxPaymentType,
         section: TaxPaymentSection,
         code: String,
@@ -278,6 +282,7 @@ final class TaxPayment {
         self.id = id
         self.paymentDate = paymentDate
         self.taxYear = taxYear
+        self.deadlineId = deadlineId
         self.typeRaw = type.rawValue
         self.sectionRaw = section.rawValue
         self.code = code

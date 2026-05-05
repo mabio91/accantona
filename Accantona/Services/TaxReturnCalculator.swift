@@ -27,8 +27,9 @@ enum TaxReturnCalculator {
             .reduce(Decimal(0)) { $0 + $1.amount }
             .roundedMoney
 
+        let invoicesById = Dictionary(uniqueKeysWithValues: invoices.map { ($0.id, $0) })
         let calculatedReserves = reserves
-            .filter { reserveBelongsToPeriod($0, period: period) }
+            .filter { reserveBelongsToPeriod($0, period: period, invoicesById: invoicesById) }
             .reduce(Decimal(0)) { $0 + $1.prudentialAmount }
             .roundedMoney
 
@@ -78,7 +79,16 @@ enum TaxReturnCalculator {
         return Calendar.current.component(.year, from: paidDate) == period
     }
 
-    private static func reserveBelongsToPeriod(_ reserve: ReserveEntry, period: Int) -> Bool {
-        Calendar.current.component(.year, from: reserve.date) == period
+    private static func reserveBelongsToPeriod(_ reserve: ReserveEntry, period: Int, invoicesById: [UUID: Invoice]) -> Bool {
+        if let invoiceId = reserve.invoiceId, let invoice = invoicesById[invoiceId] {
+            if let fiscalYear = invoice.fiscalYear {
+                return fiscalYear == period
+            }
+            if let paidDate = invoice.paidDate {
+                return Calendar.current.component(.year, from: paidDate) == period
+            }
+        }
+
+        return Calendar.current.component(.year, from: reserve.date) == period
     }
 }

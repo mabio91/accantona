@@ -14,8 +14,10 @@ struct InvoiceEditorView: View {
     @State private var stampDutyText = "2"
     @State private var issueDate = Date()
     @State private var expectedPaymentDate = Date()
+    @State private var paidDate = Date()
     @State private var hasExpectedPaymentDate = true
     @State private var status: InvoiceStatus = .issued
+    @State private var persistenceAlert: PersistenceAlert?
 
     var body: some View {
         ScrollView {
@@ -63,6 +65,10 @@ struct InvoiceEditorView: View {
                             }
                             .pickerStyle(.segmented)
                         }
+                        if status == .paid {
+                            DatePicker("Data incasso effettiva", selection: $paidDate, displayedComponents: .date)
+                                .datePickerStyle(.compact)
+                        }
                     }
                     .padding(12)
                     .background(.background.opacity(0.42), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -87,6 +93,11 @@ struct InvoiceEditorView: View {
                 Button("Annulla") { dismiss() }
             }
         }
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
+        }
     }
 
     private var canSave: Bool {
@@ -96,8 +107,8 @@ struct InvoiceEditorView: View {
     }
 
     private func save() {
-        let paidDate = status == .paid ? Date() : nil
-        let fiscalYear = paidDate.map { Calendar.current.component(.year, from: $0) }
+        let effectivePaidDate = InvoiceAccounting.paidDate(for: status, selectedPaidDate: paidDate)
+        let fiscalYear = InvoiceAccounting.fiscalYear(for: effectivePaidDate)
         let invoice = Invoice(
             number: number,
             client: client,
@@ -105,7 +116,7 @@ struct InvoiceEditorView: View {
             description: description,
             issueDate: issueDate,
             expectedPaymentDate: hasExpectedPaymentDate ? expectedPaymentDate : nil,
-            paidDate: paidDate,
+            paidDate: effectivePaidDate,
             amount: MoneyFormatting.parseDecimal(amountText).roundedMoney,
             stampDuty: MoneyFormatting.parseDecimal(stampDutyText).roundedMoney,
             status: status,
@@ -118,7 +129,7 @@ struct InvoiceEditorView: View {
             let breakdown = TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: parameter)
             modelContext.insert(ReserveEntry(
                 invoiceId: invoice.id,
-                date: paidDate ?? .now,
+                date: effectivePaidDate ?? .now,
                 incomeAmount: invoice.amount,
                 appliedRate: breakdown.appliedRate,
                 theoreticalAmount: breakdown.theoreticalReserve,
@@ -127,9 +138,24 @@ struct InvoiceEditorView: View {
             ))
         }
 
-        try? modelContext.save()
-        dismiss()
+        do {
+            try Persistence.save(modelContext)
+            dismiss()
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
     }
 
     private func parseDecimal(_ text: String) -> Decimal { MoneyFormatting.parseDecimal(text) }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
+    }
 }

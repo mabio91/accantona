@@ -10,6 +10,7 @@ struct InvoiceDetailView: View {
     @State private var showingPaidConfirmation = false
     @State private var createdReserve: ReserveEntry?
     @State private var showingDeleteConfirmation = false
+    @State private var persistenceAlert: PersistenceAlert?
 
     var body: some View {
         ScrollView {
@@ -54,6 +55,11 @@ struct InvoiceDetailView: View {
             Button("Annulla", role: .cancel) {}
         } message: {
             Text("Verranno rimossi anche accantonamenti e movimenti ledger creati da questa fattura.")
+        }
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
         }
         .appBackground()
         .sheet(isPresented: $showingPaidConfirmation) {
@@ -133,7 +139,7 @@ struct InvoiceDetailView: View {
         )
         modelContext.insert(reserve)
         createdReserve = reserve
-        try? modelContext.save()
+        guard saveChanges() else { return }
         showingPaidConfirmation = true
     }
 
@@ -147,7 +153,7 @@ struct InvoiceDetailView: View {
             note: "Fattura \(invoice.number) · \(invoice.client)",
             sourceId: reserve.id
         ))
-        try? modelContext.save()
+        _ = saveChanges()
     }
 
     private func deleteInvoice() {
@@ -160,7 +166,29 @@ struct InvoiceDetailView: View {
             modelContext.delete(reserve)
         }
         modelContext.delete(invoice)
-        try? modelContext.save()
+        _ = saveChanges()
+    }
+
+    @discardableResult
+    private func saveChanges() -> Bool {
+        do {
+            try Persistence.save(modelContext)
+            return true
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+            return false
+        }
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }
 

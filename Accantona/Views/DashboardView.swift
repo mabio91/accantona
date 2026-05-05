@@ -8,6 +8,7 @@ struct DashboardView: View {
     @Query(sort: \TaxAccountSnapshot.updatedAt, order: .reverse) private var snapshots: [TaxAccountSnapshot]
     @Query(sort: \TaxAccountMovement.date, order: .reverse) private var movements: [TaxAccountMovement]
     @Query(sort: \TaxDeadline.date) private var deadlines: [TaxDeadline]
+    @Query(sort: \TaxPayment.paymentDate, order: .reverse) private var taxPayments: [TaxPayment]
 
     var body: some View {
         ScrollView {
@@ -20,12 +21,8 @@ struct DashboardView: View {
                     )
                 }
 
-                if let deadline = nextDeadline, let parameters = currentParameters {
-                    TaxDeadlineCard(
-                        deadline: deadline,
-                        balance: currentBalance,
-                        threshold: parameters.minimumMarginThreshold
-                    )
+                if let projection = nextDeadlineProjection {
+                    SmartDeadlineCard(projection: projection)
                 }
 
                 quickStats
@@ -54,6 +51,19 @@ struct DashboardView: View {
 
     private var nextDeadline: TaxDeadline? {
         deadlines.first { $0.date >= Calendar.current.startOfDay(for: .now) } ?? deadlines.first
+    }
+
+    private var nextDeadlineProjection: DeadlineCoverageProjection? {
+        guard let nextDeadline else { return nil }
+        return DeadlineCoverageCalculator.projection(
+            for: nextDeadline,
+            parameters: currentParameters,
+            invoices: invoices,
+            reserves: reserves,
+            taxPayments: taxPayments,
+            snapshots: snapshots,
+            movements: movements
+        )
     }
 
     private var pendingReserveTotal: Decimal {

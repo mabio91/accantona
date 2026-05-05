@@ -39,6 +39,7 @@ struct OnboardingView: View {
     @State private var invoiceClient = ""
     @State private var invoiceAmountText = ""
     @State private var invoiceExpectedDate = Date()
+    @State private var persistenceAlert: PersistenceAlert?
 
     private var currentYear: Int {
         Calendar.current.component(.year, from: .now)
@@ -57,6 +58,11 @@ struct OnboardingView: View {
         .navigationBarTitleDisplayMode(.inline)
         .appBackground()
         .onAppear(perform: loadExistingValues)
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
+        }
     }
 
     private var progressHeader: some View {
@@ -293,16 +299,20 @@ struct OnboardingView: View {
     }
 
     private func completeSetup() {
-        upsertSetup()
+        let setup = upsertSetup()
         upsertParameters()
-        upsertInitialBalanceMovement()
+        upsertInitialBalanceMovement(setup: setup)
         upsertBaseDeadlines()
         insertFirstInvoiceIfNeeded()
-        try? modelContext.save()
-        dismiss()
+        do {
+            try Persistence.save(modelContext)
+            dismiss()
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
     }
 
-    private func upsertSetup() {
+    private func upsertSetup() -> AppSetup {
         let setup = setups.first ?? AppSetup()
         setup.onboardingCompleted = true
         setup.completedAt = setup.completedAt ?? .now
@@ -311,6 +321,7 @@ struct OnboardingView: View {
         if setups.isEmpty {
             modelContext.insert(setup)
         }
+        return setup
     }
 
     private func upsertParameters() {
@@ -324,24 +335,13 @@ struct OnboardingView: View {
         }
     }
 
-    private func upsertInitialBalanceMovement() {
+    private func upsertInitialBalanceMovement(setup: AppSetup) {
         let amount = initialBalance.roundedMoney
         if let existing = movements.first(where: { $0.kind == "Saldo iniziale" }) {
-            existing.amount = amount
-            existing.date = .now
-            existing.note = "Saldo conto tasse configurato nel setup"
+            OnboardingAccounting.updateInitialBalanceMovement(existing, amount: amount, setup: setup)
         } else {
-            modelContext.insert(TaxAccountMovement(
-                amount: amount,
-                kind: "Saldo iniziale",
-                note: "Saldo conto tasse configurato nel setup",
-                sourceId: setupId()
-            ))
+            modelContext.insert(OnboardingAccounting.makeInitialBalanceMovement(amount: amount, setup: setup))
         }
-    }
-
-    private func setupId() -> UUID? {
-        setups.first?.id
     }
 
     private func upsertBaseDeadlines() {
@@ -408,6 +408,17 @@ struct OnboardingView: View {
             normalized = compact
         }
         return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")) ?? 0
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }
 

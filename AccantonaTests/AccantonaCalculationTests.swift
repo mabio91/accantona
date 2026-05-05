@@ -1,4 +1,5 @@
 import XCTest
+import SwiftData
 @testable import Accantona
 
 final class AccantonaCalculationTests: XCTestCase {
@@ -138,13 +139,7 @@ final class AccantonaCalculationTests: XCTestCase {
             amountPaid: decimal("7000"),
             amountCompensated: decimal("399.27")
         )
-        let movement = TaxAccountMovement(
-            date: payment.paymentDate,
-            amount: TaxPaymentAccounting.ledgerAmount(for: payment),
-            kind: TaxPaymentAccounting.ledgerKind(for: payment),
-            note: TaxPaymentAccounting.ledgerNote(for: payment),
-            sourceId: payment.id
-        )
+        let movement = TaxPaymentAccounting.makeLedgerMovement(for: payment)
 
         let projection = DeadlineCoverageCalculator.projection(
             for: deadline,
@@ -161,6 +156,124 @@ final class AccantonaCalculationTests: XCTestCase {
         XCTAssertMoneyEqual(projection.paidByF24, decimal("7399.27"))
         XCTAssertMoneyEqual(projection.remainingDue, decimal("0"))
         XCTAssertEqual(projection.certaintyTitle, "Pagato")
+    }
+
+    func testF24ExplicitDeadlineLinkUsesCorrectDeadlineOnly() {
+        let parameters = TaxParameters(year: 2026)
+        let june = TaxDeadline(title: "Saldo + primo acconto", date: date("2026-06-30"), taxYear: 2025, estimatedAmount: decimal("1000"))
+        let november = TaxDeadline(title: "Secondo acconto", date: date("2026-11-30"), taxYear: 2026, estimatedAmount: decimal("1000"))
+        let payment = TaxPayment(
+            paymentDate: date("2026-06-20"),
+            taxYear: 2025,
+            deadlineId: november.id,
+            type: .balance,
+            section: .erario,
+            code: "1790",
+            amountDebt: decimal("400"),
+            amountPaid: decimal("400")
+        )
+
+        let juneProjection = DeadlineCoverageCalculator.projection(
+            for: june,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [payment],
+            snapshots: [],
+            movements: []
+        )
+        let novemberProjection = DeadlineCoverageCalculator.projection(
+            for: november,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [payment],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(juneProjection.paidByF24, decimal("0"))
+        XCTAssertMoneyEqual(novemberProjection.paidByF24, decimal("400"))
+    }
+
+    func testF24SamePaymentYearButDifferentTaxYearDoesNotReduceWrongDeadline() {
+        let parameters = TaxParameters(year: 2026)
+        let june = TaxDeadline(title: "Saldo + primo acconto", date: date("2026-06-30"), taxYear: 2025, estimatedAmount: decimal("1000"))
+        let payment = TaxPayment(
+            paymentDate: date("2026-06-20"),
+            taxYear: 2024,
+            type: .balance,
+            section: .erario,
+            code: "1790",
+            amountDebt: decimal("400"),
+            amountPaid: decimal("400")
+        )
+
+        let projection = DeadlineCoverageCalculator.projection(
+            for: june,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [payment],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(projection.paidByF24, decimal("0"))
+        XCTAssertMoneyEqual(projection.remainingDue, decimal("1000"))
+    }
+
+    func testBackdatedMovementCreatedAfterReconciliationStillAffectsLedger() {
+        let snapshot = TaxAccountSnapshot(balance: decimal("1000"), updatedAt: date("2026-01-10"))
+        let movement = TaxAccountMovement(
+            date: date("2026-01-01"),
+            createdAt: date("2026-01-11"),
+            amount: decimal("250"),
+            kind: "Accantonamento"
+        )
+
+        let balance = TaxAccountLedger.balance(snapshots: [snapshot], movements: [movement])
+
+        XCTAssertMoneyEqual(balance, decimal("1250"))
+    }
+
+    func testInvoiceAccountingUsesHistoricalPaidDate() {
+        let paidDate = InvoiceAccounting.paidDate(for: .paid, selectedPaidDate: date("2024-12-20"))
+
+        XCTAssertEqual(paidDate, date("2024-12-20"))
+        XCTAssertEqual(InvoiceAccounting.fiscalYear(for: paidDate), 2024)
+        XCTAssertNil(InvoiceAccounting.paidDate(for: .issued, selectedPaidDate: date("2024-12-20")))
+    }
+
+    func testTaxPaymentLedgerUpdatesAndDeletesBySourceId() {
+        let payment = TaxPayment(
+            paymentDate: date("2026-06-20"),
+            taxYear: 2025,
+            type: .balance,
+            section: .erario,
+            code: "1790",
+            amountDebt: decimal("1000"),
+            amountPaid: decimal("800")
+        )
+        let movement = TaxPaymentAccounting.makeLedgerMovement(for: payment)
+
+        payment.amountPaid = decimal("600")
+        payment.amountCompensated = decimal("400")
+        TaxPaymentAccounting.updateLedgerMovement(movement, for: payment)
+
+        XCTAssertEqual(movement.sourceId, payment.id)
+        XCTAssertMoneyEqual(movement.amount, decimal("-600"))
+
+        let remainingMovements = [movement].filter { $0.sourceId != Optional(payment.id) }
+        XCTAssertTrue(remainingMovements.isEmpty)
+    }
+
+    func testOnboardingInitialBalanceMovementUsesSetupSourceId() {
+        let setup = AppSetup()
+        let movement = OnboardingAccounting.makeInitialBalanceMovement(amount: decimal("7534.41"), setup: setup)
+
+        XCTAssertEqual(movement.sourceId, setup.id)
+        XCTAssertMoneyEqual(movement.amount, decimal("7534.41"))
     }
 
     func testTaxReturnComparisonCalculatesAnnualDeltas() {
@@ -229,6 +342,121 @@ final class AccantonaCalculationTests: XCTestCase {
 
         XCTAssertMoneyEqual(gross, decimal("32483.88"))
         XCTAssertMoneyEqual(taxable, decimal("20886"))
+    }
+
+    func testTaxReturnComparisonUsesLinkedInvoiceFiscalYearForReserves() {
+        let invoice = Invoice(
+            number: "1/2023",
+            client: "Cliente",
+            paidDate: date("2023-12-31"),
+            amount: decimal("1000"),
+            status: .paid,
+            fiscalYear: 2023
+        )
+        let reserve = ReserveEntry(
+            invoiceId: invoice.id,
+            date: date("2024-01-02"),
+            incomeAmount: decimal("1000"),
+            appliedRate: decimal("0.33"),
+            theoreticalAmount: decimal("300"),
+            prudentialAmount: decimal("330")
+        )
+        let summary = TaxReturnSummary(taxPeriod: 2023, revenues: decimal("1000"), substituteTaxDue: decimal("100"))
+
+        let comparison = TaxReturnCalculator.comparison(
+            for: summary,
+            invoices: [invoice],
+            reserves: [reserve],
+            payments: []
+        )
+
+        XCTAssertMoneyEqual(comparison.calculatedReserves, decimal("330"))
+    }
+
+    func testDemoScenarioEndToEndNumbers() throws {
+        let container = try ModelContainer.accantonaContainer(inMemory: true)
+        let context = ModelContext(container)
+        SeedData.installDemoScenario(context: context)
+
+        let parameters = try XCTUnwrap(try context.fetch(FetchDescriptor<TaxParameters>()).first)
+        let invoices = try context.fetch(FetchDescriptor<Invoice>())
+        let reserves = try context.fetch(FetchDescriptor<ReserveEntry>())
+        let deadlines = try context.fetch(FetchDescriptor<TaxDeadline>()).sorted { $0.date < $1.date }
+        let payments = try context.fetch(FetchDescriptor<TaxPayment>())
+        let movements = try context.fetch(FetchDescriptor<TaxAccountMovement>())
+        let snapshots = try context.fetch(FetchDescriptor<TaxAccountSnapshot>())
+        let returns = try context.fetch(FetchDescriptor<TaxReturnSummary>())
+
+        let invoice = try XCTUnwrap(invoices.first { $0.number == "E2E-001" })
+        let reserve = try XCTUnwrap(reserves.first { $0.invoiceId == invoice.id })
+        let june = try XCTUnwrap(deadlines.first { Calendar.current.component(.month, from: $0.date) == 6 })
+        let november = try XCTUnwrap(deadlines.first { Calendar.current.component(.month, from: $0.date) == 11 })
+        let payment = try XCTUnwrap(payments.first)
+        let setup = try XCTUnwrap(try context.fetch(FetchDescriptor<AppSetup>()).first)
+
+        XCTAssertEqual(setup.onboardingCompleted, true)
+        XCTAssertEqual(payment.deadlineId, june.id)
+        XCTAssertEqual(invoice.status, .paid)
+        XCTAssertEqual(invoice.paidDate, date("2026-02-16"))
+        XCTAssertMoneyEqual(TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: parameters).prudentialReserve, decimal("1101.16"))
+        XCTAssertMoneyEqual(reserve.actualReservedAmount, decimal("500"))
+        XCTAssertMoneyEqual(ReserveAccounting.missingAmount(for: reserve), decimal("601.16"))
+        XCTAssertMoneyEqual(TaxAccountLedger.balance(snapshots: snapshots, movements: movements), decimal("635.14"))
+
+        let juneProjection = DeadlineCoverageCalculator.projection(
+            for: june,
+            parameters: parameters,
+            invoices: invoices,
+            reserves: reserves,
+            taxPayments: payments,
+            snapshots: snapshots,
+            movements: movements
+        )
+        XCTAssertMoneyEqual(juneProjection.paidByF24, decimal("7399.27"))
+        XCTAssertMoneyEqual(juneProjection.remainingDue, decimal("0"))
+        XCTAssertEqual(juneProjection.certaintyTitle, "Pagato")
+
+        let novemberProjection = DeadlineCoverageCalculator.projection(
+            for: november,
+            parameters: parameters,
+            invoices: invoices,
+            reserves: reserves,
+            taxPayments: payments,
+            snapshots: snapshots,
+            movements: movements,
+            startingBalance: juneProjection.projectedBalance - juneProjection.remainingDue,
+            fromDateExclusive: june.date
+        )
+        XCTAssertMoneyEqual(novemberProjection.margin, decimal("-3300.46"))
+
+        let simulated = try XCTUnwrap(SimulatorCalculator.result(
+            input: SimulationInput(
+                newIncome: decimal("13500"),
+                expectedIncomeDate: date("2026-10-15"),
+                reserveRate: parameters.appliedReserveRate,
+                includeExpectedInvoices: false,
+                includeRecoveries: false,
+                target: .november
+            ),
+            deadlines: deadlines,
+            parameters: parameters,
+            invoices: invoices,
+            reserves: reserves,
+            taxPayments: payments,
+            snapshots: snapshots,
+            movements: movements
+        ))
+        XCTAssertMoneyEqual(simulated.projection.margin, decimal("558.05"))
+        XCTAssertMoneyEqual(simulated.availableAfterReserve, decimal("9040.33"))
+
+        let taxReturn = try XCTUnwrap(returns.first { $0.taxPeriod == 2023 })
+        XCTAssertMoneyEqual(taxReturn.revenues, decimal("41646"))
+        XCTAssertMoneyEqual(taxReturn.grossIncome, decimal("32484"))
+        XCTAssertMoneyEqual(taxReturn.deductedContributions, decimal("11598"))
+        XCTAssertMoneyEqual(taxReturn.taxableNetIncome, decimal("20886"))
+        XCTAssertMoneyEqual(taxReturn.substituteTaxDue, decimal("1044"))
+        XCTAssertMoneyEqual(taxReturn.substituteTaxAdvancesPaid, decimal("1882"))
+        XCTAssertMoneyEqual(taxReturn.substituteTaxBalanceOrCredit, decimal("-838"))
     }
 }
 

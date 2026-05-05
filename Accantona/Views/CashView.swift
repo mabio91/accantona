@@ -8,6 +8,7 @@ struct CashView: View {
     @Query(sort: \ReserveEntry.date, order: .reverse) private var reserves: [ReserveEntry]
 
     @State private var balanceText = ""
+    @State private var persistenceAlert: PersistenceAlert?
 
     var body: some View {
         ScrollView {
@@ -29,6 +30,11 @@ struct CashView: View {
         }
         .navigationTitle("Cassa")
         .appBackground()
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
+        }
     }
 
     private var currentBalance: Decimal {
@@ -176,18 +182,37 @@ struct CashView: View {
             sourceId: reserve.id
         ))
 
-        try? modelContext.save()
+        saveChanges()
     }
 
     private func reconcileBalance() {
         let newBalance = parseDecimal(balanceText)
         modelContext.insert(TaxAccountSnapshot(balance: newBalance, updatedAt: .now))
         balanceText = ""
-        try? modelContext.save()
+        saveChanges()
     }
 
     private func parseDecimal(_ text: String) -> Decimal {
         MoneyFormatting.parseDecimal(text)
+    }
+
+    private func saveChanges() {
+        do {
+            try Persistence.save(modelContext)
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }
 

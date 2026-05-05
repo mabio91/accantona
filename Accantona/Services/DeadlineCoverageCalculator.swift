@@ -175,10 +175,17 @@ enum DeadlineCoverageCalculator {
 
     private static func matchingPayments(for deadline: TaxDeadline, payments: [TaxPayment]) -> [TaxPayment] {
         payments.filter { payment in
-            paymentMatchesDeadlineKind(payment, deadline: deadline)
-            && paymentMatchesDeadlineYear(payment, deadline: deadline)
+            paymentMatchesDeadline(payment, deadline: deadline)
             && payment.paymentDate <= deadline.date
         }
+    }
+
+    private static func paymentMatchesDeadline(_ payment: TaxPayment, deadline: TaxDeadline) -> Bool {
+        if let deadlineId = payment.deadlineId {
+            return deadlineId == deadline.id
+        }
+
+        return payment.taxYear == deadline.taxYear && paymentMatchesDeadlineKind(payment, deadline: deadline)
     }
 
     private static func paymentMatchesDeadlineKind(_ payment: TaxPayment, deadline: TaxDeadline) -> Bool {
@@ -193,11 +200,5 @@ enum DeadlineCoverageCalculator {
         case .other:
             return false
         }
-    }
-
-    private static func paymentMatchesDeadlineYear(_ payment: TaxPayment, deadline: TaxDeadline) -> Bool {
-        let paymentCalendarYear = Calendar.current.component(.year, from: payment.paymentDate)
-        let deadlineCalendarYear = Calendar.current.component(.year, from: deadline.date)
-        return payment.taxYear == deadline.taxYear || paymentCalendarYear == deadlineCalendarYear
     }
 }

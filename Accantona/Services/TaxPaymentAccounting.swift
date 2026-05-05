@@ -26,6 +26,25 @@ enum TaxPaymentAccounting {
         return codeText + creditText
     }
 
+    static func makeLedgerMovement(for payment: TaxPayment) -> TaxAccountMovement {
+        TaxAccountMovement(
+            date: payment.paymentDate,
+            amount: ledgerAmount(for: payment),
+            kind: ledgerKind(for: payment),
+            note: ledgerNote(for: payment),
+            sourceId: payment.id
+        )
+    }
+
+    static func updateLedgerMovement(_ movement: TaxAccountMovement, for payment: TaxPayment) {
+        movement.date = payment.paymentDate
+        movement.createdAt = movement.createdAt ?? .now
+        movement.amount = ledgerAmount(for: payment)
+        movement.kind = ledgerKind(for: payment)
+        movement.note = ledgerNote(for: payment)
+        movement.sourceId = payment.id
+    }
+
     static func validation(
         type: TaxPaymentType,
         section: TaxPaymentSection,

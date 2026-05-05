@@ -12,6 +12,7 @@ struct ImportCSVView: View {
     @State private var importedFileName = ""
     @State private var importSummary: CSVImportSummary?
     @State private var errorMessage: String?
+    @State private var persistenceAlert: PersistenceAlert?
 
     var body: some View {
         ScrollView {
@@ -44,6 +45,11 @@ struct ImportCSVView: View {
         }
         .navigationTitle("Import CSV")
         .appBackground()
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
+        }
         .fileImporter(
             isPresented: $isImporterPresented,
             allowedContentTypes: [.commaSeparatedText, .plainText],
@@ -248,8 +254,12 @@ struct ImportCSVView: View {
             }
         }
 
-        try? modelContext.save()
-        importSummary = summary
+        do {
+            try Persistence.save(modelContext)
+            importSummary = summary
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
     }
 
     private func currentParameters() -> TaxParameters {
@@ -260,6 +270,17 @@ struct ImportCSVView: View {
         let parameter = TaxParameters(year: Calendar.current.component(.year, from: .now))
         modelContext.insert(parameter)
         return parameter
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 
     private func reserveStatus(reservedAmount: Decimal, dueAmount: Decimal) -> ReserveStatus {

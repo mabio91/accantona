@@ -54,6 +54,7 @@ struct ReservesView: View {
     @State private var selectedFilter: ReserveFilter = .all
     @State private var partialReserve: ReserveEntry?
     @State private var partialAmountText = ""
+    @State private var persistenceAlert: PersistenceAlert?
 
     var body: some View {
         ScrollView {
@@ -76,6 +77,11 @@ struct ReservesView: View {
         .sheet(item: $partialReserve) { reserve in
             partialReserveSheet(reserve)
                 .presentationDetents([.medium])
+        }
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
         }
     }
 
@@ -256,18 +262,37 @@ struct ReservesView: View {
             note: invoiceLabel ?? "Quota da incasso \(MoneyFormatting.money(reserve.incomeAmount))",
             sourceId: reserve.id
         ))
-        try? modelContext.save()
+        saveChanges()
     }
 
     private func markAsRecovery(_ reserve: ReserveEntry) {
         guard reserve.status != .completed && reserve.status != .recovered else { return }
         reserve.status = .skipped
         reserve.notes = reserve.notes.isEmpty ? "Da recuperare" : reserve.notes
-        try? modelContext.save()
+        saveChanges()
     }
 
     private func parseDecimal(_ text: String) -> Decimal {
         MoneyFormatting.parseDecimal(text)
+    }
+
+    private func saveChanges() {
+        do {
+            try Persistence.save(modelContext)
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }
 

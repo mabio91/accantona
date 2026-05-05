@@ -5,6 +5,7 @@ struct InvoicesView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Invoice.issueDate, order: .reverse) private var invoices: [Invoice]
     @State private var searchText = ""
+    @State private var persistenceAlert: PersistenceAlert?
 
     var filteredInvoices: [Invoice] {
         guard !searchText.isEmpty else { return invoices }
@@ -53,6 +54,11 @@ struct InvoicesView: View {
             }
         }
         .appBackground()
+        .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(persistenceAlert?.message ?? "")
+        }
     }
 
     @ViewBuilder
@@ -77,7 +83,22 @@ struct InvoicesView: View {
         for index in offsets {
             modelContext.delete(sectionInvoices[index])
         }
-        try? modelContext.save()
+        do {
+            try Persistence.save(modelContext)
+        } catch {
+            persistenceAlert = PersistenceAlert(error)
+        }
+    }
+
+    private var persistenceAlertBinding: Binding<Bool> {
+        Binding(
+            get: { persistenceAlert != nil },
+            set: { isPresented in
+                if !isPresented {
+                    persistenceAlert = nil
+                }
+            }
+        )
     }
 }
 
