@@ -321,3 +321,56 @@ final class TaxDeadline {
         self.notes = notes
     }
 }
+
+@Model
+final class TaxReturnSummary {
+    var id: UUID
+    var declarationYear: Int
+    var taxPeriod: Int
+    var revenues: Decimal
+    var profitabilityCoefficient: Decimal
+    var grossIncome: Decimal
+    var deductedContributions: Decimal
+    var taxableNetIncome: Decimal
+    var substituteTaxDue: Decimal
+    var substituteTaxAdvancesPaid: Decimal
+    var substituteTaxBalanceOrCredit: Decimal
+    var inpsDue: Decimal
+    var inpsAdvancesPaid: Decimal
+    var inpsBalanceOrCredit: Decimal
+    var notes: String
+
+    init(
+        id: UUID = UUID(),
+        declarationYear: Int = Calendar.current.component(.year, from: .now),
+        taxPeriod: Int = Calendar.current.component(.year, from: .now) - 1,
+        revenues: Decimal = 0,
+        profitabilityCoefficient: Decimal = 0.78,
+        grossIncome: Decimal = 0,
+        deductedContributions: Decimal = 0,
+        taxableNetIncome: Decimal = 0,
+        substituteTaxDue: Decimal = 0,
+        substituteTaxAdvancesPaid: Decimal = 0,
+        substituteTaxBalanceOrCredit: Decimal = 0,
+        inpsDue: Decimal = 0,
+        inpsAdvancesPaid: Decimal = 0,
+        inpsBalanceOrCredit: Decimal = 0,
+        notes: String = ""
+    ) {
+        self.id = id
+        self.declarationYear = declarationYear
+        self.taxPeriod = taxPeriod
+        self.revenues = revenues
+        self.profitabilityCoefficient = profitabilityCoefficient
+        self.grossIncome = grossIncome
+        self.deductedContributions = deductedContributions
+        self.taxableNetIncome = taxableNetIncome
+        self.substituteTaxDue = substituteTaxDue
+        self.substituteTaxAdvancesPaid = substituteTaxAdvancesPaid
+        self.substituteTaxBalanceOrCredit = substituteTaxBalanceOrCredit
+        self.inpsDue = inpsDue
+        self.inpsAdvancesPaid = inpsAdvancesPaid
+        self.inpsBalanceOrCredit = inpsBalanceOrCredit
+        self.notes = notes
+    }
+}

@@ -15,7 +15,8 @@ struct AccantonaApp: App {
             TaxAccountSnapshot.self,
             TaxAccountMovement.self,
             TaxPayment.self,
-            TaxDeadline.self
+            TaxDeadline.self,
+            TaxReturnSummary.self
         ])
     }
 }

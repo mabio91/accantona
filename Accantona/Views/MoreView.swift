@@ -84,6 +84,18 @@ struct MoreView: View {
                         )
                     }
                     .buttonStyle(.plain)
+
+                    NavigationLink {
+                        TaxReturnsView()
+                    } label: {
+                        MoreActionRow(
+                            title: "Dichiarazioni",
+                            subtitle: "Riepiloghi annuali e confronto con stime e F24",
+                            symbol: "doc.text.magnifyingglass",
+                            tint: AppColor.petrol
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Panel(title: "Base locale", subtitle: "La MVP resta concentrata su inserimento manuale e calcoli verificabili.", symbol: "externaldrive.fill", tint: AppColor.amber) {

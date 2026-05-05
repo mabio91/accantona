@@ -162,6 +162,74 @@ final class AccantonaCalculationTests: XCTestCase {
         XCTAssertMoneyEqual(projection.remainingDue, decimal("0"))
         XCTAssertEqual(projection.certaintyTitle, "Pagato")
     }
+
+    func testTaxReturnComparisonCalculatesAnnualDeltas() {
+        let summary = TaxReturnSummary(
+            declarationYear: 2024,
+            taxPeriod: 2023,
+            revenues: decimal("41646"),
+            profitabilityCoefficient: decimal("0.78"),
+            grossIncome: decimal("32484"),
+            deductedContributions: decimal("11598"),
+            taxableNetIncome: decimal("20886"),
+            substituteTaxDue: decimal("1044"),
+            substituteTaxAdvancesPaid: decimal("1882"),
+            substituteTaxBalanceOrCredit: decimal("-838"),
+            inpsDue: decimal("0"),
+            inpsAdvancesPaid: decimal("0"),
+            inpsBalanceOrCredit: decimal("0")
+        )
+        let invoice = Invoice(
+            number: "1/2023",
+            client: "Cliente",
+            paidDate: date("2023-06-10"),
+            amount: decimal("41646"),
+            status: .paid
+        )
+        let reserve = ReserveEntry(
+            date: date("2023-06-10"),
+            incomeAmount: decimal("41646"),
+            appliedRate: decimal("0.330346"),
+            theoreticalAmount: decimal("0"),
+            prudentialAmount: decimal("13758.79")
+        )
+        let taxPayment = TaxPayment(
+            paymentDate: date("2024-06-30"),
+            taxYear: 2023,
+            type: .balance,
+            section: .erario,
+            code: "1790",
+            amountDebt: decimal("1044"),
+            amountPaid: decimal("1044")
+        )
+
+        let comparison = TaxReturnCalculator.comparison(
+            for: summary,
+            invoices: [invoice],
+            reserves: [reserve],
+            payments: [taxPayment]
+        )
+
+        XCTAssertMoneyEqual(comparison.registeredIncome, decimal("41646"))
+        XCTAssertMoneyEqual(comparison.declaredTaxAndInpsDue, decimal("1044"))
+        XCTAssertMoneyEqual(comparison.incomeDelta, decimal("0"))
+        XCTAssertMoneyEqual(comparison.reserveVsDeclarationDelta, decimal("12714.79"))
+        XCTAssertMoneyEqual(comparison.f24VsDeclarationDelta, decimal("0"))
+    }
+
+    func testTaxReturnDerivedIncomeHelpers() {
+        let gross = TaxReturnCalculator.derivedGrossIncome(
+            revenues: decimal("41646"),
+            profitabilityCoefficient: decimal("0.78")
+        )
+        let taxable = TaxReturnCalculator.derivedTaxableIncome(
+            grossIncome: decimal("32484"),
+            deductedContributions: decimal("11598")
+        )
+
+        XCTAssertMoneyEqual(gross, decimal("32483.88"))
+        XCTAssertMoneyEqual(taxable, decimal("20886"))
+    }
 }
 
 private func decimal(_ value: String) -> Decimal {
