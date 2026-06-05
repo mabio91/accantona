@@ -37,9 +37,9 @@ enum CoverageStatus {
 
     var title: String {
         switch self {
-        case .covered: "Coperto"
-        case .lowMargin: "Coperto, margine basso"
-        case .deficit: "Da recuperare"
+        case .covered: "Coperta"
+        case .lowMargin: "Coperta ma stretta"
+        case .deficit: "Da coprire"
         case .unknown: "Dato non disponibile"
         }
     }
@@ -88,4 +88,3 @@ enum TaxCalculator {
         return deficit / parameters.appliedReserveRate
     }
 }
-

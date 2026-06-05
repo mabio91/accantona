@@ -10,9 +10,19 @@ enum SeedData {
 
         let setupDescriptor = FetchDescriptor<AppSetup>()
         let setups = fetch(setupDescriptor, context: context)
-        guard setups.isEmpty else { return }
+        let parameters = fetch(FetchDescriptor<TaxParameters>(), context: context)
+        let didNormalizeParameters = parameters.reduce(false) { partial, parameter in
+            TaxParameterSanitizer.normalize(parameter) || partial
+        }
 
-        let hasParameters = !(fetch(FetchDescriptor<TaxParameters>(), context: context).isEmpty)
+        guard setups.isEmpty else {
+            if didNormalizeParameters {
+                save(context)
+            }
+            return
+        }
+
+        let hasParameters = !parameters.isEmpty
         let hasDeadlines = !(fetch(FetchDescriptor<TaxDeadline>(), context: context).isEmpty)
         let hasMovements = !(fetch(FetchDescriptor<TaxAccountMovement>(), context: context).isEmpty)
         let hasSnapshots = !(fetch(FetchDescriptor<TaxAccountSnapshot>(), context: context).isEmpty)

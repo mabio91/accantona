@@ -21,10 +21,10 @@ struct InvoiceEditorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Nuova fattura",
-                    subtitle: "Bastano pochi dati per vedere subito accantonamento e disponibile davvero.",
+                    subtitle: "Bastano pochi dati per calcolare la quota da mettere da parte e quanto resta dell'incasso.",
                     symbol: "doc.badge.plus",
                     tint: AppColor.petrol
                 )
@@ -80,11 +80,10 @@ struct InvoiceEditorView: View {
                     Label("Salva fattura", systemImage: "checkmark.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .primaryActionStyle()
                 .disabled(!canSave)
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Nuova fattura")
         .appBackground()
@@ -125,7 +124,8 @@ struct InvoiceEditorView: View {
         )
         modelContext.insert(invoice)
 
-        if status == .paid, let parameter = parameters.first {
+        if status == .paid,
+           let parameter = TaxParameterResolver.parameter(forFiscalYear: fiscalYear, parameters: parameters) {
             let breakdown = TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: parameter)
             modelContext.insert(ReserveEntry(
                 invoiceId: invoice.id,

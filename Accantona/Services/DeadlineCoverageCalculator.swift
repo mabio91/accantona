@@ -1,18 +1,20 @@
 import Foundation
 import SwiftUI
 
-enum DeadlineRisk {
+enum DeadlineRisk: Equatable {
     case covered
     case lowMargin
+    case dependsOnRecovery
     case dependsOnFutureIncome
     case deficit
 
     var title: String {
         switch self {
-        case .covered: "Coperto"
-        case .lowMargin: "Margine basso"
+        case .covered: "Coperta"
+        case .lowMargin: "Coperta ma stretta"
+        case .dependsOnRecovery: "Recuperi necessari"
         case .dependsOnFutureIncome: "Dipende da incassi futuri"
-        case .deficit: "Deficit"
+        case .deficit: "Da coprire"
         }
     }
 
@@ -20,6 +22,7 @@ enum DeadlineRisk {
         switch self {
         case .covered: "checkmark.seal.fill"
         case .lowMargin: "exclamationmark.triangle.fill"
+        case .dependsOnRecovery: "arrow.counterclockwise.circle.fill"
         case .dependsOnFutureIncome: "clock.arrow.circlepath"
         case .deficit: "xmark.octagon.fill"
         }
@@ -29,6 +32,7 @@ enum DeadlineRisk {
         switch self {
         case .covered: AppColor.sage
         case .lowMargin: AppColor.amber
+        case .dependsOnRecovery: AppColor.amber
         case .dependsOnFutureIncome: AppColor.petrol
         case .deficit: AppColor.coral
         }
@@ -69,6 +73,7 @@ enum DeadlineCoverageCalculator {
         taxPayments: [TaxPayment],
         snapshots: [TaxAccountSnapshot],
         movements: [TaxAccountMovement],
+        parameterCatalog: [TaxParameters] = [],
         startingBalance: Decimal? = nil,
         fromDateExclusive: Date? = nil
     ) -> DeadlineCoverageProjection {
@@ -90,8 +95,12 @@ enum DeadlineCoverageCalculator {
 
         let futureIncome = futureInvoices.reduce(Decimal(0)) { $0 + $1.amount }
         let futureReserves = futureInvoices.reduce(Decimal(0)) { partial, invoice in
-            guard let parameters else { return partial }
-            return partial + TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: parameters).prudentialReserve
+            guard let invoiceParameters = TaxParameterResolver.parameter(
+                forExpectedInvoice: invoice,
+                parameters: parameterCatalog,
+                fallback: parameters
+            ) else { return partial }
+            return partial + TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: invoiceParameters).prudentialReserve
         }
 
         let balanceWithExistingRecoveries = currentBalance + recoverable
@@ -147,7 +156,7 @@ enum DeadlineCoverageCalculator {
         }
 
         if balanceWithExistingRecoveries >= remainingDue {
-            return balanceWithExistingRecoveries - remainingDue < threshold ? .lowMargin : .covered
+            return .dependsOnRecovery
         }
 
         if futureReserves > 0, projectedBalance >= remainingDue {
@@ -185,18 +194,26 @@ enum DeadlineCoverageCalculator {
             return deadlineId == deadline.id
         }
 
-        return payment.taxYear == deadline.taxYear && paymentMatchesDeadlineKind(payment, deadline: deadline)
+        return paymentMatchesDeadlineKind(payment, deadline: deadline)
     }
 
     private static func paymentMatchesDeadlineKind(_ payment: TaxPayment, deadline: TaxDeadline) -> Bool {
         let title = deadline.title.lowercased()
+        let isJuneLike = title.contains("saldo") || title.contains("primo") || title.contains("giugno")
+        let isNovemberLike = title.contains("secondo") || title.contains("novembre")
+
         switch payment.type {
-        case .balance, .firstAdvance:
-            return title.contains("saldo") || title.contains("primo") || title.contains("giugno")
+        case .balance:
+            return payment.taxYear == deadline.taxYear && isJuneLike
+        case .firstAdvance:
+            if isJuneLike, payment.taxYear == deadline.taxYear + 1 {
+                return true
+            }
+            return payment.taxYear == deadline.taxYear && isJuneLike
         case .secondAdvance:
-            return title.contains("secondo") || title.contains("novembre")
+            return payment.taxYear == deadline.taxYear && isNovemberLike
         case .stampDuty:
-            return title.contains("bollo")
+            return payment.taxYear == deadline.taxYear && title.contains("bollo")
         case .other:
             return false
         }

@@ -25,10 +25,10 @@ struct TaxPaymentsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "F24 e versamenti",
-                    subtitle: "Registra pagamenti certi, crediti compensati e importi gia coperti per separare stime e realta.",
+                    subtitle: "Registra il debito coperto da F24, i crediti compensati e l'uscita reale dal conto tasse.",
                     symbol: "doc.plaintext.fill",
                     tint: AppColor.sage
                 )
@@ -36,7 +36,7 @@ struct TaxPaymentsView: View {
                 summaryCard
                 paymentsPanel
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("F24")
         .toolbar {
@@ -83,19 +83,19 @@ struct TaxPaymentsView: View {
 
     private var deleteMessage: String {
         guard let paymentToDelete else {
-            return "Rimuovero anche il movimento collegato dalla cassa tasse."
+            return "Rimuovero anche il movimento collegato dal conto tasse."
         }
-        return "Rimuovero anche il movimento collegato dalla cassa tasse: \(paymentToDelete.code)."
+        return "Rimuovero anche il movimento collegato dal conto tasse: \(paymentToDelete.code)."
     }
 
     private var summaryCard: some View {
-        GlassSurface(cornerRadius: 24, tint: AppColor.sage) {
-            VStack(alignment: .leading, spacing: 16) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.sage) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Pagamenti certi")
                             .font(.headline)
-                        Text("Il debito F24 copre le scadenze; il netto pagato muove la cassa.")
+                        Text("Il debito coperto riduce le scadenze; il netto pagato riduce il conto tasse.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -105,23 +105,23 @@ struct TaxPaymentsView: View {
 
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Coperto da F24")
+                        Text("Debito coperto da F24")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        MoneyText(value: totalCovered, style: .title2.weight(.bold), color: AppColor.petrol)
+                        MoneyText(value: totalCovered, style: .title3.weight(.bold), color: AppColor.petrol)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 5) {
                         Text("Netto pagato")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        MoneyText(value: totalNetPaid, style: .title2.weight(.bold), color: AppColor.coral)
+                        MoneyText(value: totalNetPaid, style: .title3.weight(.bold), color: AppColor.coral)
                     }
                 }
 
                 DetailRow(title: "Crediti compensati", value: MoneyFormatting.money(totalCompensated))
             }
-            .padding(18)
+            .padding(14)
         }
     }
 
@@ -228,10 +228,10 @@ struct TaxPaymentEditorSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 14) {
                     ScreenIntro(
                         title: payment == nil ? "Nuovo F24" : "Modifica F24",
-                        subtitle: "Debito e crediti aggiornano la copertura delle scadenze; il netto pagato aggiorna il ledger.",
+                        subtitle: "Debito e crediti aggiornano la copertura delle scadenze; il netto pagato aggiorna il conto tasse.",
                         symbol: "doc.plaintext.fill",
                         tint: AppColor.sage
                     )
@@ -239,7 +239,7 @@ struct TaxPaymentEditorSheet: View {
                     formPanel
                     effectPanel
                 }
-                .padding(18)
+                .padding(14)
             }
             .navigationTitle(payment == nil ? "Nuovo F24" : "Modifica")
             .toolbar {
@@ -294,7 +294,10 @@ struct TaxPaymentEditorSheet: View {
                     Picker("Tipo pagamento", selection: $type) {
                         ForEach(TaxPaymentType.allCases) { Text($0.rawValue).tag($0) }
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.menu)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.background.opacity(0.54), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
 
                 VStack(alignment: .leading, spacing: 7) {
@@ -309,9 +312,9 @@ struct TaxPaymentEditorSheet: View {
 
                 AppTextField(title: "Codice tributo o causale", placeholder: suggestedCode, text: $code)
                     .textInputAutocapitalization(.characters)
-                AppTextField(title: "Importo debito", placeholder: "0,00", text: $amountDebtText, keyboard: .decimalPad)
+                AppTextField(title: "Debito coperto dalla scadenza", placeholder: "0,00", text: $amountDebtText, keyboard: .decimalPad)
                 AppTextField(title: "Credito compensato", placeholder: "0,00", text: $compensatedText, keyboard: .decimalPad)
-                AppTextField(title: "Netto pagato", placeholder: "0,00", text: $netPaidText, keyboard: .decimalPad)
+                AppTextField(title: "Netto pagato dal conto tasse", placeholder: "0,00", text: $netPaidText, keyboard: .numbersAndPunctuation)
                 AppTextField(title: "Note", placeholder: "Opzionale", text: $notes)
 
                 if let validation {
@@ -322,16 +325,16 @@ struct TaxPaymentEditorSheet: View {
     }
 
     private var effectPanel: some View {
-        GlassSurface(cornerRadius: 22, tint: AppColor.sage) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.sage) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     StatusBadge(amountDebt > 0 ? "Dato certo" : "Da F24", symbol: "doc.plaintext.fill", color: AppColor.petrol)
                     Spacer()
                     StatusBadge(netPaid <= 0 ? "Credito" : "Pagato", symbol: netPaid <= 0 ? "plus.circle.fill" : "checkmark.circle.fill", color: netPaid <= 0 ? AppColor.sage : AppColor.coral)
                 }
-                DetailRow(title: "Copertura scadenze", value: MoneyFormatting.money(amountDebt))
+                DetailRow(title: "Riduce le scadenze di", value: MoneyFormatting.money(amountDebt))
                 DetailRow(title: "Credito compensato", value: MoneyFormatting.money(amountCompensated))
-                DetailRow(title: "Movimento cassa", value: MoneyFormatting.money(-netPaid))
+                DetailRow(title: "Movimento conto tasse", value: MoneyFormatting.money(-netPaid))
             }
             .padding(16)
         }
@@ -445,15 +448,19 @@ struct TaxPaymentRow: View {
                         .foregroundStyle(AppColor.petrol)
 
                     VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(payment.code.isEmpty ? payment.section.rawValue : payment.code)
                                 .font(.headline)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.82)
                             StatusBadge(payment.type.rawValue, symbol: "doc.plaintext.fill", color: AppColor.petrol)
                         }
                         Text("\(payment.section.rawValue) · \(payment.paymentDate.formatted(date: .abbreviated, time: .omitted)) · anno \(payment.taxYear)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .lineLimit(2)
                     }
+                    .layoutPriority(1)
                     Spacer()
                     StatusBadge(isCredit ? "Credito" : "Pagato", symbol: isCredit ? "plus.circle.fill" : "checkmark.circle.fill", color: isCredit ? AppColor.sage : AppColor.coral)
                 }
@@ -461,7 +468,7 @@ struct TaxPaymentRow: View {
                 VStack(spacing: 0) {
                     DetailRow(title: "Debito coperto", value: MoneyFormatting.money(TaxPaymentAccounting.coveredAmount(for: payment)))
                     DetailRow(title: "Credito compensato", value: MoneyFormatting.money(payment.amountCompensated))
-                    DetailRow(title: "Netto pagato", value: MoneyFormatting.money(payment.amountPaid))
+                    DetailRow(title: "Netto pagato dal conto tasse", value: MoneyFormatting.money(payment.amountPaid))
                 }
 
                 if !payment.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -476,7 +483,7 @@ struct TaxPaymentRow: View {
                     } label: {
                         Label("Modifica", systemImage: "pencil")
                     }
-                    .buttonStyle(.bordered)
+                    .secondaryActionStyle()
 
                     Spacer()
 
@@ -486,7 +493,7 @@ struct TaxPaymentRow: View {
                         Label("Elimina", systemImage: "trash")
                             .labelStyle(.iconOnly)
                     }
-                    .buttonStyle(.bordered)
+                    .secondaryActionStyle()
                     .accessibilityLabel("Elimina F24 \(payment.code)")
                 }
             }

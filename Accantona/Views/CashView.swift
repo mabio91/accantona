@@ -12,10 +12,10 @@ struct CashView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Cassa tasse",
-                    subtitle: "Il saldo si muove con accantonamenti trasferiti e F24 registrati. Il saldo manuale serve solo a riconciliare il conto reale.",
+                    subtitle: "Mostra il denaro sul conto tasse: aumenta con le quote trasferite dagli incassi e diminuisce con gli F24.",
                     symbol: "building.columns.fill",
                     tint: AppColor.petrol
                 )
@@ -26,7 +26,7 @@ struct CashView: View {
                 movementsList
                 reconciliationPanel
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Cassa")
         .appBackground()
@@ -64,13 +64,13 @@ struct CashView: View {
     }
 
     private var balanceCard: some View {
-        GlassSurface(cornerRadius: 24, tint: AppColor.petrol) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.petrol) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Saldo calcolato")
+                        Text("Saldo conto tasse calcolato")
                             .font(.headline)
-                        Text("Base riconciliata + movimenti automatici")
+                        Text("Ultima riconciliazione + trasferimenti - F24")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -78,10 +78,10 @@ struct CashView: View {
                     StatusBadge("Automatico", symbol: "arrow.triangle.2.circlepath", color: AppColor.sage)
                 }
 
-                MoneyText(value: currentBalance, style: .system(size: 42, weight: .bold, design: .rounded), color: AppColor.petrol)
+                MoneyText(value: currentBalance, style: .system(size: 30, weight: .bold, design: .rounded), color: AppColor.petrol)
 
                 HStack {
-                    Text("Ultima riconciliazione")
+                    Text("Ultima riconciliazione manuale")
                         .foregroundStyle(.secondary)
                     Spacer()
                     Text(latestSnapshot?.updatedAt.formatted(date: .abbreviated, time: .shortened) ?? "Mai")
@@ -90,31 +90,31 @@ struct CashView: View {
                 .font(.caption)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
+            .padding(14)
         }
     }
 
     private var ledgerSummary: some View {
-        Panel(title: "Come si forma il saldo", subtitle: "La cassa non dipende piu da un numero scritto a mano.", symbol: "list.bullet.rectangle.fill", tint: AppColor.sage) {
+        Panel(title: "Come si forma il saldo conto tasse", subtitle: "Il saldo calcolato parte dall'ultima riconciliazione e somma solo i movimenti successivi.", symbol: "list.bullet.rectangle.fill", tint: AppColor.sage) {
             VStack(spacing: 0) {
-                DetailRow(title: "Saldo riconciliato", value: MoneyFormatting.money(latestSnapshot?.balance ?? 0))
-                DetailRow(title: "Movimenti successivi", value: MoneyFormatting.money(deltaAfterReconciliation))
-                DetailRow(title: "Saldo calcolato", value: MoneyFormatting.money(currentBalance))
+                DetailRow(title: "Saldo dell'ultima riconciliazione", value: MoneyFormatting.money(latestSnapshot?.balance ?? 0))
+                DetailRow(title: "Movimenti dopo la riconciliazione", value: MoneyFormatting.money(deltaAfterReconciliation))
+                DetailRow(title: "Saldo conto tasse calcolato", value: MoneyFormatting.money(currentBalance))
             }
         }
     }
 
     private var pendingReservesPanel: some View {
-        Panel(title: "Accantonamenti da trasferire", subtitle: pendingReserves.isEmpty ? "Nessuna quota in sospeso." : "Quando trasferisci sul conto tasse, la cassa aumenta automaticamente.", symbol: "tray.and.arrow.down.fill", tint: AppColor.amber) {
+        Panel(title: "Quote da trasferire sul conto tasse", subtitle: pendingReserves.isEmpty ? "Nessuna quota in sospeso." : "Quando registri il trasferimento, il saldo conto tasse aumenta.", symbol: "tray.and.arrow.down.fill", tint: AppColor.amber) {
             VStack(spacing: 12) {
                 VStack(spacing: 0) {
-                    DetailRow(title: "Teorico maturato", value: MoneyFormatting.money(theoreticalReserve))
-                    DetailRow(title: "Gia trasferito", value: MoneyFormatting.money(actualReserve))
-                    DetailRow(title: "Da recuperare", value: MoneyFormatting.money(max(theoreticalReserve - actualReserve, 0)))
+                    DetailRow(title: "Quote maturate dagli incassi", value: MoneyFormatting.money(theoreticalReserve))
+                    DetailRow(title: "Gia trasferito sul conto tasse", value: MoneyFormatting.money(actualReserve))
+                    DetailRow(title: "Ancora da trasferire", value: MoneyFormatting.money(max(theoreticalReserve - actualReserve, 0)))
                 }
 
                 if pendingReserves.isEmpty {
-                    EmptyStateView(symbol: "checkmark.seal", title: "Tutto allineato", message: "Gli accantonamenti registrati risultano gia trasferiti o non ancora maturati.")
+                    EmptyStateView(symbol: "checkmark.seal", title: "Tutto allineato", message: "Le quote maturate risultano gia trasferite oppure non ci sono incassi da accantonare.")
                 } else {
                     ForEach(pendingReserves.prefix(5)) { reserve in
                         PendingReserveRow(reserve: reserve) {
@@ -128,17 +128,16 @@ struct CashView: View {
                         Label("Gestisci tutti gli accantonamenti", systemImage: "tray.full.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    .secondaryActionStyle()
                 }
             }
         }
     }
 
     private var movementsList: some View {
-        Panel(title: "Movimenti recenti", subtitle: movements.isEmpty ? "F24 e accantonamenti trasferiti compariranno qui." : nil, symbol: "arrow.left.arrow.right", tint: AppColor.petrol) {
+        Panel(title: "Movimenti recenti", subtitle: movements.isEmpty ? "Trasferimenti sul conto tasse e F24 compariranno qui." : nil, symbol: "arrow.left.arrow.right", tint: AppColor.petrol) {
             if movements.isEmpty {
-                EmptyStateView(symbol: "list.bullet.rectangle", title: "Nessun movimento automatico", message: "Registra un F24 o trasferisci un accantonamento per iniziare il registro.")
+                EmptyStateView(symbol: "list.bullet.rectangle", title: "Nessun movimento", message: "Registra un F24 o trasferisci una quota sul conto tasse per iniziare il registro.")
             } else {
                 VStack(spacing: 10) {
                     ForEach(movements.prefix(8)) { movement in
@@ -150,17 +149,16 @@ struct CashView: View {
     }
 
     private var reconciliationPanel: some View {
-        Panel(title: "Riconcilia saldo reale", subtitle: "Usalo quando il saldo bancario non coincide con il saldo calcolato.", symbol: "slider.horizontal.below.rectangle", tint: .secondary) {
+        Panel(title: "Allinea al saldo reale", subtitle: "Usalo quando il saldo reale del conto tasse non coincide con quello calcolato dall'app.", symbol: "slider.horizontal.below.rectangle", tint: .secondary) {
             VStack(spacing: 14) {
-                AppTextField(title: "Saldo reale del conto tasse", placeholder: MoneyFormatting.money(currentBalance), text: $balanceText, keyboard: .decimalPad)
+                AppTextField(title: "Saldo reale sul conto tasse", placeholder: MoneyFormatting.money(currentBalance), text: $balanceText, keyboard: .decimalPad)
                 Button {
                     reconcileBalance()
                 } label: {
-                    Label("Riconcilia saldo", systemImage: "checkmark.seal.fill")
+                    Label("Allinea saldo", systemImage: "checkmark.seal.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .secondaryActionStyle()
                 .disabled(balanceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || parseDecimal(balanceText) < 0)
             }
         }
@@ -242,8 +240,9 @@ struct PendingReserveRow: View {
                     Label("Trasferito", systemImage: "arrow.down.to.line.compact")
                         .labelStyle(.iconOnly)
                 }
-                .buttonStyle(.bordered)
+                .secondaryActionStyle()
                 .tint(AppColor.sage)
+                .accessibilityLabel("Segna quota come trasferita sul conto tasse")
             }
         }
         .padding(13)

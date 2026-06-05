@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 @testable import Accantona
 
+@MainActor
 final class AccantonaCalculationTests: XCTestCase {
     func testTaxCalculatorUsesConfiguredForfettarioRates() {
         let parameters = TaxParameters(year: 2026)
@@ -223,6 +224,87 @@ final class AccantonaCalculationTests: XCTestCase {
         XCTAssertMoneyEqual(projection.remainingDue, decimal("1000"))
     }
 
+    func testFirstAdvanceForCurrentYearCoversCombinedJuneDeadline() {
+        let parameters = TaxParameters(year: 2026)
+        let june = TaxDeadline(title: "Saldo + primo acconto", date: date("2026-06-30"), taxYear: 2025, estimatedAmount: decimal("1000"))
+        let firstAdvance = TaxPayment(
+            paymentDate: date("2026-06-20"),
+            taxYear: 2026,
+            type: .firstAdvance,
+            section: .erario,
+            code: "1791",
+            amountDebt: decimal("350"),
+            amountPaid: decimal("350")
+        )
+
+        let projection = DeadlineCoverageCalculator.projection(
+            for: june,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [firstAdvance],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(projection.paidByF24, decimal("350"))
+        XCTAssertMoneyEqual(projection.remainingDue, decimal("650"))
+    }
+
+    func testF24CreditDoesNotBecomeNegativeCoverage() {
+        let parameters = TaxParameters(year: 2026)
+        let november = TaxDeadline(title: "Secondo acconto", date: date("2026-11-30"), taxYear: 2026, estimatedAmount: decimal("1000"))
+        let credit = TaxPayment(
+            paymentDate: date("2026-11-20"),
+            taxYear: 2026,
+            type: .secondAdvance,
+            section: .erario,
+            code: "1792",
+            amountDebt: 0,
+            amountPaid: decimal("-200")
+        )
+
+        let projection = DeadlineCoverageCalculator.projection(
+            for: november,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [credit],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(projection.paidByF24, decimal("0"))
+        XCTAssertMoneyEqual(projection.remainingDue, decimal("1000"))
+    }
+
+    func testRecoverableReservesDoNotLookLikeAlreadyCoveredCash() {
+        let parameters = TaxParameters(year: 2026)
+        let deadline = TaxDeadline(title: "Secondo acconto", date: date("2026-11-30"), taxYear: 2026, estimatedAmount: decimal("300"))
+        let reserve = ReserveEntry(
+            date: date("2026-04-01"),
+            incomeAmount: decimal("1000"),
+            appliedRate: decimal("0.33"),
+            theoreticalAmount: decimal("300"),
+            prudentialAmount: decimal("330"),
+            actualReservedAmount: 0,
+            status: .pending
+        )
+
+        let projection = DeadlineCoverageCalculator.projection(
+            for: deadline,
+            parameters: parameters,
+            invoices: [],
+            reserves: [reserve],
+            taxPayments: [],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(projection.recoverableReserves, decimal("330"))
+        XCTAssertEqual(projection.risk, .dependsOnRecovery)
+    }
+
     func testBackdatedMovementCreatedAfterReconciliationStillAffectsLedger() {
         let snapshot = TaxAccountSnapshot(balance: decimal("1000"), updatedAt: date("2026-01-10"))
         let movement = TaxAccountMovement(
@@ -344,6 +426,50 @@ final class AccantonaCalculationTests: XCTestCase {
         XCTAssertMoneyEqual(taxable, decimal("20886"))
     }
 
+    func testTaxParameterResolverUsesFiscalYearWhenAvailable() {
+        let oldParameters = TaxParameters(year: 2024, substituteTaxRate: decimal("0.05"))
+        let currentParameters = TaxParameters(year: 2026, substituteTaxRate: decimal("0.15"))
+        let invoice = Invoice(
+            number: "1/2024",
+            client: "Cliente",
+            paidDate: date("2024-12-20"),
+            amount: decimal("1000"),
+            status: .paid,
+            fiscalYear: 2024
+        )
+
+        let resolved = TaxParameterResolver.parameter(for: invoice, parameters: [currentParameters, oldParameters])
+
+        XCTAssertEqual(resolved?.year, 2024)
+        XCTAssertEqual(resolved?.substituteTaxRate, decimal("0.05"))
+    }
+
+    func testTaxParameterSanitizerNormalizesPersistedWholeNumberPercentages() {
+        let parameters = TaxParameters(
+            year: 2026,
+            substituteTaxRate: decimal("1.5"),
+            profitabilityCoefficient: decimal("78"),
+            inpsRate: decimal("26.07"),
+            prudentialExtraRate: decimal("1")
+        )
+
+        let changed = TaxParameterSanitizer.normalize(parameters)
+
+        XCTAssertTrue(changed)
+        XCTAssertEqual(parameters.substituteTaxRate, decimal("0.15"))
+        XCTAssertEqual(parameters.profitabilityCoefficient, decimal("0.78"))
+        XCTAssertEqual(parameters.inpsRate, decimal("0.2607"))
+        XCTAssertEqual(parameters.prudentialExtraRate, decimal("0.01"))
+    }
+
+    func testTaxParameterInputParserTreatsOneAsOnePercentForRates() {
+        XCTAssertEqual(TaxParameterInputParser.percent("15"), decimal("0.15"))
+        XCTAssertEqual(TaxParameterInputParser.percent("26,07"), decimal("0.2607"))
+        XCTAssertEqual(TaxParameterInputParser.percent("1"), decimal("0.01"))
+        XCTAssertEqual(TaxParameterInputParser.percent("1", allowsWhole: true), decimal("1"))
+        XCTAssertEqual(TaxParameterInputParser.percent("78", allowsWhole: true), decimal("0.78"))
+    }
+
     func testTaxReturnComparisonUsesLinkedInvoiceFiscalYearForReserves() {
         let invoice = Invoice(
             number: "1/2023",
@@ -371,6 +497,122 @@ final class AccantonaCalculationTests: XCTestCase {
         )
 
         XCTAssertMoneyEqual(comparison.calculatedReserves, decimal("330"))
+    }
+
+    func testBackupRestoreRoundTripPreservesAllStoresAndLinks() throws {
+        let container = try ModelContainer.accantonaContainer(inMemory: true)
+        let context = ModelContext(container)
+        let setup = AppSetup(onboardingCompleted: true, completedAt: date("2026-01-01"), regimeName: "Regime test")
+        let parameters = TaxParameters(year: 2026, substituteTaxRate: decimal("0.15"), minimumMarginThreshold: decimal("300"))
+        let invoice = Invoice(
+            number: "B-001",
+            client: "Cliente Backup",
+            project: "Audit",
+            description: "Fattura da preservare",
+            issueDate: date("2026-02-01"),
+            expectedPaymentDate: date("2026-02-20"),
+            paidDate: date("2026-02-18"),
+            amount: decimal("1200.50"),
+            stampDuty: decimal("2"),
+            status: .paid,
+            managementYear: 2026,
+            fiscalYear: 2026,
+            notes: "Nota fattura"
+        )
+        let reserve = ReserveEntry(
+            invoiceId: invoice.id,
+            date: date("2026-02-18"),
+            incomeAmount: invoice.amount,
+            appliedRate: decimal("0.330346"),
+            theoreticalAmount: decimal("396.58"),
+            prudentialAmount: decimal("406.58"),
+            actualReservedAmount: decimal("200"),
+            transferDate: date("2026-02-19"),
+            status: .partial,
+            notes: "Nota riserva"
+        )
+        let snapshot = TaxAccountSnapshot(balance: decimal("700"), updatedAt: date("2026-01-10"))
+        let movement = TaxAccountMovement(
+            date: date("2026-02-19"),
+            createdAt: date("2026-02-19"),
+            amount: decimal("200"),
+            kind: "Accantonamento",
+            note: "Movimento backup",
+            sourceId: reserve.id
+        )
+        let deadline = TaxDeadline(
+            title: "Secondo acconto",
+            date: date("2026-11-30"),
+            taxYear: 2026,
+            estimatedAmount: decimal("500"),
+            certainty: .confirmed,
+            notes: "Nota scadenza"
+        )
+        let payment = TaxPayment(
+            paymentDate: date("2026-11-20"),
+            taxYear: 2026,
+            deadlineId: deadline.id,
+            type: .secondAdvance,
+            section: .erario,
+            code: "1792",
+            amountDebt: decimal("500"),
+            amountPaid: decimal("450"),
+            amountCompensated: decimal("50"),
+            notes: "Nota F24"
+        )
+        let taxReturn = TaxReturnSummary(
+            declarationYear: 2026,
+            taxPeriod: 2025,
+            revenues: decimal("1000"),
+            profitabilityCoefficient: decimal("0.78"),
+            substituteTaxDue: decimal("100"),
+            notes: "Nota dichiarazione"
+        )
+
+        context.insert(setup)
+        context.insert(parameters)
+        context.insert(invoice)
+        context.insert(reserve)
+        context.insert(snapshot)
+        context.insert(movement)
+        context.insert(deadline)
+        context.insert(payment)
+        context.insert(taxReturn)
+        try context.save()
+
+        let data = try AppBackupService.encodedBackup(context: context, now: date("2026-05-08"))
+        let preview = try AppBackupService.preview(from: data)
+        XCTAssertEqual(preview.totalRecords, 9)
+
+        let deleted = try AppBackupService.deleteAllData(in: context)
+        XCTAssertEqual(deleted.totalRecords, 9)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Invoice>()).count, 0)
+
+        let restored = try AppBackupService.restoreBackup(from: data, into: context)
+        XCTAssertEqual(restored.totalRecords, 9)
+
+        let restoredInvoice = try XCTUnwrap(try context.fetch(FetchDescriptor<Invoice>()).first)
+        let restoredReserve = try XCTUnwrap(try context.fetch(FetchDescriptor<ReserveEntry>()).first)
+        let restoredPayment = try XCTUnwrap(try context.fetch(FetchDescriptor<TaxPayment>()).first)
+        let restoredDeadline = try XCTUnwrap(try context.fetch(FetchDescriptor<TaxDeadline>()).first)
+
+        XCTAssertEqual(restoredInvoice.id, invoice.id)
+        XCTAssertEqual(restoredInvoice.client, "Cliente Backup")
+        XCTAssertEqual(restoredInvoice.status, .paid)
+        XCTAssertEqual(restoredReserve.invoiceId, invoice.id)
+        XCTAssertEqual(restoredPayment.deadlineId, restoredDeadline.id)
+        XCTAssertMoneyEqual(restoredPayment.coveredAmount, decimal("500"))
+        XCTAssertEqual(try AppBackupService.currentSummary(context: context).totalRecords, 9)
+    }
+
+    func testInvalidBackupDoesNotEraseExistingData() throws {
+        let container = try ModelContainer.accantonaContainer(inMemory: true)
+        let context = ModelContext(container)
+        context.insert(Invoice(number: "SAFE-001", client: "Cliente", amount: decimal("100")))
+        try context.save()
+
+        XCTAssertThrowsError(try AppBackupService.restoreBackup(from: Data("{}".utf8), into: context))
+        XCTAssertEqual(try context.fetch(FetchDescriptor<Invoice>()).count, 1)
     }
 
     func testDemoScenarioEndToEndNumbers() throws {

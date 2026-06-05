@@ -3,21 +3,53 @@ import SwiftUI
 
 @main
 struct AccantonaApp: App {
-    private let modelContainer: ModelContainer
+    private let modelContainer: ModelContainer?
+    private let startupError: Error?
 
     init() {
         do {
+            try FileManager.default.createDirectory(
+                at: FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0],
+                withIntermediateDirectories: true
+            )
             modelContainer = try ModelContainer.accantonaContainer(inMemory: AppLaunchMode.demoScenario)
+            startupError = nil
         } catch {
-            fatalError("Unable to create SwiftData container: \(error)")
+            modelContainer = nil
+            startupError = error
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            AppView()
+            if let modelContainer {
+                AppView()
+                    .modelContainer(modelContainer)
+            } else {
+                StartupFailureView(error: startupError)
+            }
         }
-        .modelContainer(modelContainer)
+    }
+}
+
+struct StartupFailureView: View {
+    let error: Error?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Image(systemName: "externaldrive.badge.exclamationmark")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(AppColor.coral)
+            Text("Archivio non disponibile")
+                .font(.headline)
+            Text(error?.localizedDescription ?? "Accantona non riesce ad aprire l'archivio locale.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .appBackground()
     }
 }
 

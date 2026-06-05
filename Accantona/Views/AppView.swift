@@ -31,6 +31,7 @@ struct AppView: View {
             ForEach(AppTab.allCases) { tab in
                 NavigationStack {
                     tabContent(tab)
+                        .navigationBarTitleDisplayMode(.inline)
                 }
                 .tabItem {
                     Label(tab.rawValue, systemImage: tab.symbol)

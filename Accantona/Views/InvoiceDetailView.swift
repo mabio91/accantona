@@ -8,13 +8,15 @@ struct InvoiceDetailView: View {
     @Query(sort: \TaxAccountMovement.date, order: .reverse) private var movements: [TaxAccountMovement]
     @Bindable var invoice: Invoice
     @State private var showingPaidConfirmation = false
+    @State private var showingPaidDateSheet = false
+    @State private var paidDateDraft = Date()
     @State private var createdReserve: ReserveEntry?
     @State private var showingDeleteConfirmation = false
     @State private var persistenceAlert: PersistenceAlert?
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 header
 
                 if let breakdown {
@@ -25,16 +27,15 @@ struct InvoiceDetailView: View {
 
                 if invoice.status != .paid {
                     Button {
-                        markAsPaid()
+                        preparePaidRegistration()
                     } label: {
                         Label("Segna come incassata", systemImage: "checkmark.circle.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .primaryActionStyle()
                 }
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle(invoice.number)
         .navigationBarTitleDisplayMode(.inline)
@@ -54,7 +55,7 @@ struct InvoiceDetailView: View {
             }
             Button("Annulla", role: .cancel) {}
         } message: {
-            Text("Verranno rimossi anche accantonamenti e movimenti ledger creati da questa fattura.")
+            Text("Verranno rimosse anche le quote e i movimenti conto tasse creati da questa fattura.")
         }
         .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
             Button("OK", role: .cancel) { }
@@ -62,6 +63,16 @@ struct InvoiceDetailView: View {
             Text(persistenceAlert?.message ?? "")
         }
         .appBackground()
+        .sheet(isPresented: $showingPaidDateSheet) {
+            PaidDateSheet(
+                paidDate: $paidDateDraft,
+                onConfirm: { date in
+                    showingPaidDateSheet = false
+                    markAsPaid(on: date)
+                }
+            )
+            .presentationDetents([.height(300)])
+        }
         .sheet(isPresented: $showingPaidConfirmation) {
             if let breakdown, let createdReserve {
                 PaidConfirmationView(
@@ -84,23 +95,23 @@ struct InvoiceDetailView: View {
     }
 
     private var breakdown: ReserveBreakdown? {
-        guard let parameter = parameters.first else { return nil }
+        guard let parameter = TaxParameterResolver.parameter(for: invoice, parameters: parameters) else { return nil }
         return TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: parameter)
     }
 
     private var header: some View {
-        GlassSurface(cornerRadius: 24, tint: AppColor.mint) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.mint) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(invoice.client)
-                    .font(.title2.bold())
+                    .font(.title3.bold())
                 Text(invoice.project.isEmpty ? invoice.invoiceDescription : invoice.project)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                MoneyText(value: invoice.amount, style: .system(size: 40, weight: .bold, design: .rounded), color: AppColor.ink)
+                MoneyText(value: invoice.amount, style: .system(size: 30, weight: .bold, design: .rounded), color: AppColor.ink)
                 StatusBadge(invoice.status.rawValue, symbol: invoice.status == .paid ? "checkmark.seal.fill" : "clock.fill", color: invoice.status == .paid ? AppColor.sage : AppColor.amber)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
+            .padding(14)
         }
     }
 
@@ -120,17 +131,29 @@ struct InvoiceDetailView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
-    private func markAsPaid() {
-        guard let breakdown else { return }
-        guard !reserves.contains(where: { $0.invoiceId == invoice.id }) else { return }
-        let year = Calendar.current.component(.year, from: .now)
+    private func preparePaidRegistration() {
+        paidDateDraft = invoice.expectedPaymentDate ?? invoice.paidDate ?? Date()
+        showingPaidDateSheet = true
+    }
+
+    private func markAsPaid(on paidDate: Date) {
+        let year = Calendar.current.component(.year, from: paidDate)
+        guard let parameter = TaxParameterResolver.parameter(forFiscalYear: year, parameters: parameters) else { return }
+        let breakdown = TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: parameter)
+        let existingReserve = reserves.first(where: { $0.invoiceId == invoice.id })
+
         invoice.status = .paid
-        invoice.paidDate = .now
+        invoice.paidDate = paidDate
         invoice.fiscalYear = year
+
+        guard existingReserve == nil else {
+            _ = saveChanges()
+            return
+        }
 
         let reserve = ReserveEntry(
             invoiceId: invoice.id,
-            date: .now,
+            date: paidDate,
             incomeAmount: invoice.amount,
             appliedRate: breakdown.appliedRate,
             theoreticalAmount: breakdown.theoreticalReserve,
@@ -192,18 +215,58 @@ struct InvoiceDetailView: View {
     }
 }
 
+struct PaidDateSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var paidDate: Date
+    let onConfirm: (Date) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Capsule()
+                .fill(.secondary.opacity(0.28))
+                .frame(width: 38, height: 4)
+                .frame(maxWidth: .infinity)
+            Text("Data incasso")
+                .font(.headline)
+            Text("Serve per assegnare l'incasso all'anno fiscale corretto e scegliere l'aliquota giusta.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            DatePicker("Incassata il", selection: $paidDate, displayedComponents: .date)
+                .datePickerStyle(.compact)
+                .padding(12)
+                .background(.background.opacity(0.54), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            Button {
+                onConfirm(paidDate)
+                dismiss()
+            } label: {
+                Label("Registra incasso", systemImage: "checkmark.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .primaryActionStyle()
+        }
+        .padding(16)
+        .appBackground()
+    }
+}
+
 struct DetailRow: View {
     let title: String
     let value: String
 
     var body: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(title)
                 .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer()
             Text(value)
                 .fontWeight(.semibold)
                 .multilineTextAlignment(.trailing)
+                .lineLimit(2)
+                .minimumScaleFactor(0.78)
         }
         .font(.subheadline)
         .padding(14)
@@ -220,13 +283,13 @@ struct PaidConfirmationView: View {
     @State private var isShowingPartial = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             Capsule()
                 .fill(.secondary.opacity(0.28))
                 .frame(width: 42, height: 5)
                 .frame(maxWidth: .infinity)
             Text("Incasso registrato")
-                .font(.title.bold())
+                .font(.title3.bold())
             ReserveBreakdownView(breakdown: breakdown)
 
             if isShowingPartial {
@@ -251,8 +314,7 @@ struct PaidConfirmationView: View {
                     Label(isShowingPartial ? "Segna parte accantonata" : "Segna accantonato", systemImage: "tray.and.arrow.down.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .primaryActionStyle()
                 .disabled(isShowingPartial && parseDecimal(partialAmountText) <= 0)
 
                 HStack(spacing: 10) {
@@ -264,7 +326,7 @@ struct PaidConfirmationView: View {
                         Label(isShowingPartial ? "Tutto" : "Solo una parte", systemImage: "percent")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .secondaryActionStyle()
 
                     Button {
                         onLater()
@@ -273,11 +335,11 @@ struct PaidConfirmationView: View {
                         Label("Piu tardi", systemImage: "clock.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
+                    .secondaryActionStyle()
                 }
             }
         }
-        .padding(20)
+        .padding(16)
         .appBackground()
     }
 

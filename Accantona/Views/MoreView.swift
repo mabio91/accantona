@@ -4,7 +4,7 @@ import SwiftUI
 struct MoreView: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Strumenti",
                     subtitle: "Parametri, versamenti e preferenze operative raccolti senza sembrare un pannello tecnico.",
@@ -66,7 +66,7 @@ struct MoreView: View {
                     } label: {
                         MoreActionRow(
                             title: "Parametri fiscali",
-                            subtitle: "Aliquote, coefficiente e margine prudenziale",
+                            subtitle: "Aliquote e percentuale da mettere da parte",
                             symbol: "slider.horizontal.3",
                             tint: AppColor.petrol
                         )
@@ -96,16 +96,30 @@ struct MoreView: View {
                         )
                     }
                     .buttonStyle(.plain)
+
                 }
 
-                Panel(title: "Base locale", subtitle: "La MVP resta concentrata su inserimento manuale e calcoli verificabili.", symbol: "externaldrive.fill", tint: AppColor.amber) {
+                Panel(title: "Archivio locale", subtitle: "Dati su dispositivo, inserimento controllato e calcoli verificabili.", symbol: "externaldrive.fill", tint: AppColor.amber) {
                     VStack(spacing: 12) {
-                        InfoLine(symbol: "eye.slash", title: "OCR e import PDF non ancora inclusi")
+                        InfoLine(symbol: "square.and.arrow.up", title: "Backup JSON e ripristino completo")
+                        InfoLine(symbol: "doc.text.magnifyingglass", title: "Import CSV standardizzato")
                         InfoLine(symbol: "lock.doc", title: "Dati locali con SwiftData")
                     }
                 }
+
+                NavigationLink {
+                    DataManagementView()
+                } label: {
+                    MoreActionRow(
+                        title: "Backup e dati",
+                        subtitle: "Esporta, ripristina o azzera l'archivio locale",
+                        symbol: "externaldrive.fill",
+                        tint: AppColor.coral
+                    )
+                }
+                .buttonStyle(.plain)
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Altro")
         .appBackground()

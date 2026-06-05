@@ -47,12 +47,12 @@ struct OnboardingView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 progressHeader
                 stepContent
                 navigationBar
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle(mode == .firstRun ? "" : "Setup")
         .navigationBarTitleDisplayMode(.inline)
@@ -112,19 +112,19 @@ struct OnboardingView: View {
     }
 
     private var introStep: some View {
-        GlassSurface(cornerRadius: 28, tint: AppColor.mint) {
-            VStack(alignment: .leading, spacing: 18) {
+        GlassSurface(cornerRadius: 20, tint: AppColor.mint) {
+            VStack(alignment: .leading, spacing: 14) {
                 Image(systemName: "tray.and.arrow.down.fill")
-                    .font(.system(size: 34, weight: .semibold))
+                    .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(AppColor.sage)
                 Text("Accantona")
-                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
                 Text("Una cassa fiscale personale: imposti parametri, saldo e scadenze una volta, poi ogni incasso diventa una decisione chiara.")
                     .font(.title3.weight(.medium))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(22)
+            .padding(16)
         }
     }
 
@@ -155,15 +155,15 @@ struct OnboardingView: View {
     }
 
     private var parametersStep: some View {
-        OnboardingPanel(title: "Parametri iniziali", subtitle: "Sono i valori prudenziali del brief. L'accantonamento applicato viene calcolato, non scritto a mano.", symbol: "percent", tint: AppColor.amber) {
+        OnboardingPanel(title: "Parametri iniziali", subtitle: "Da questi valori Accantona calcola la percentuale da mettere da parte a ogni incasso.", symbol: "percent", tint: AppColor.amber) {
             VStack(spacing: 12) {
                 AppTextField(title: "Imposta sostitutiva", placeholder: "15", text: $substituteTaxRateText, keyboard: .decimalPad)
                 AppTextField(title: "Coefficiente redditivita", placeholder: "78", text: $profitabilityCoefficientText, keyboard: .decimalPad)
                 AppTextField(title: "INPS Gestione Separata", placeholder: "26,07", text: $inpsRateText, keyboard: .decimalPad)
-                AppTextField(title: "Margine prudenziale", placeholder: "1", text: $prudentialExtraRateText, keyboard: .decimalPad)
+                AppTextField(title: "Extra prudenziale", placeholder: "1", text: $prudentialExtraRateText, keyboard: .decimalPad)
 
                 HStack {
-                    Label("Accantonamento applicato", systemImage: "equal.circle.fill")
+                    Label("Percentuale da mettere da parte", systemImage: "equal.circle.fill")
                         .font(.headline)
                     Spacer()
                     Text(MoneyFormatting.percentage(appliedReserveRate))
@@ -178,7 +178,7 @@ struct OnboardingView: View {
     }
 
     private var balanceStep: some View {
-        OnboardingPanel(title: "Saldo conto tasse", subtitle: "Questo crea un movimento iniziale di cassa. Da qui in poi accantonamenti e F24 aggiornano il saldo automaticamente.", symbol: "building.columns.fill", tint: AppColor.sage) {
+        OnboardingPanel(title: "Saldo conto tasse", subtitle: "Inserisci quanto hai gia sul conto dedicato alle tasse. Poi trasferimenti e F24 aggiorneranno il saldo.", symbol: "building.columns.fill", tint: AppColor.sage) {
             VStack(spacing: 12) {
                 AppTextField(title: "Saldo iniziale", placeholder: "7.534,41", text: $initialBalanceText, keyboard: .decimalPad)
                 DetailRow(title: "Movimento creato", value: MoneyFormatting.money(initialBalance.roundedMoney))
@@ -216,22 +216,22 @@ struct OnboardingView: View {
     }
 
     private var summaryStep: some View {
-        GlassSurface(cornerRadius: 26, tint: AppColor.sage) {
-            VStack(alignment: .leading, spacing: 16) {
+        GlassSurface(cornerRadius: 20, tint: AppColor.sage) {
+            VStack(alignment: .leading, spacing: 12) {
                 StatusBadge("Pronto", symbol: "checkmark.seal.fill", color: AppColor.sage)
                 Text("Accantona e configurata")
-                    .font(.title.bold())
+                    .font(.title3.bold())
 
                 VStack(spacing: 0) {
                     DetailRow(title: "Regime", value: regimeName)
-                    DetailRow(title: "Accantonamento", value: MoneyFormatting.percentage(appliedReserveRate))
-                    DetailRow(title: "Saldo iniziale", value: MoneyFormatting.money(initialBalance.roundedMoney))
+                    DetailRow(title: "Percentuale da mettere da parte", value: MoneyFormatting.percentage(appliedReserveRate))
+                    DetailRow(title: "Saldo iniziale conto tasse", value: MoneyFormatting.money(initialBalance.roundedMoney))
                     DetailRow(title: "Scadenze", value: "Giugno e novembre \(currentYear)")
                     DetailRow(title: "Prima fattura", value: createFirstInvoice ? MoneyFormatting.money(firstInvoiceAmount.roundedMoney) : "Saltata")
                 }
                 .background(.background.opacity(0.48), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .padding(18)
+            .padding(14)
         }
     }
 
@@ -243,7 +243,7 @@ struct OnboardingView: View {
                 Label("Indietro", systemImage: "chevron.left")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .secondaryActionStyle()
             .disabled(step == .intro)
 
             Button {
@@ -256,13 +256,12 @@ struct OnboardingView: View {
                 Label(step == .summary ? "Completa" : "Continua", systemImage: step == .summary ? "checkmark" : "chevron.right")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
+            .primaryActionStyle()
         }
-        .controlSize(.large)
     }
 
     private var substituteTaxRate: Decimal { percentageValue(substituteTaxRateText, fallback: 0.15) }
-    private var profitabilityCoefficient: Decimal { percentageValue(profitabilityCoefficientText, fallback: 0.78) }
+    private var profitabilityCoefficient: Decimal { percentageValue(profitabilityCoefficientText, fallback: 0.78, allowsWhole: true) }
     private var inpsRate: Decimal { percentageValue(inpsRateText, fallback: 0.2607) }
     private var prudentialExtraRate: Decimal { percentageValue(prudentialExtraRateText, fallback: 0.01) }
     private var appliedReserveRate: Decimal {
@@ -384,10 +383,8 @@ struct OnboardingView: View {
         ))
     }
 
-    private func percentageValue(_ text: String, fallback: Decimal) -> Decimal {
-        let parsed = parseDecimal(text)
-        guard parsed > 0 else { return fallback }
-        return parsed > 1 ? parsed / 100 : parsed
+    private func percentageValue(_ text: String, fallback: Decimal, allowsWhole: Bool = false) -> Decimal {
+        TaxParameterInputParser.percent(text, fallback: fallback, allowsWhole: allowsWhole)
     }
 
     private func percentInput(_ value: Decimal) -> String {
@@ -430,12 +427,12 @@ struct OnboardingPanel<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        GlassSurface(cornerRadius: 24, tint: tint) {
-            VStack(alignment: .leading, spacing: 16) {
+        GlassSurface(cornerRadius: 18, tint: tint) {
+            VStack(alignment: .leading, spacing: 12) {
                 ScreenIntro(title: title, subtitle: subtitle, symbol: symbol, tint: tint)
                 content
             }
-            .padding(18)
+            .padding(14)
         }
     }
 }

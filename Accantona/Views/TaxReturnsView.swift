@@ -15,7 +15,7 @@ struct TaxReturnsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Dichiarazioni",
                     subtitle: "Confronta stime Accantona, F24 pagati e dati ufficiali della dichiarazione dei redditi.",
@@ -46,7 +46,7 @@ struct TaxReturnsView: View {
                     }
                 }
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Dichiarazioni")
         .toolbar {
@@ -76,7 +76,7 @@ struct TaxReturnsView: View {
             }
             Button("Annulla", role: .cancel) { }
         } message: {
-            Text("Rimuovero solo il riepilogo dichiarazione. Fatture, F24 e ledger restano invariati.")
+            Text("Rimuovero solo il riepilogo dichiarazione. Fatture, F24 e movimenti conto tasse restano invariati.")
         }
         .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
             Button("OK", role: .cancel) { }
@@ -101,8 +101,7 @@ struct TaxReturnsView: View {
                     Label("Nuova dichiarazione", systemImage: "plus.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .primaryActionStyle()
             }
         }
     }
@@ -137,14 +136,14 @@ struct TaxReturnCard: View {
     let onDelete: () -> Void
 
     var body: some View {
-        GlassSurface(cornerRadius: 24, tint: AppColor.petrol) {
-            VStack(alignment: .leading, spacing: 16) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.petrol) {
+            VStack(alignment: .leading, spacing: 12) {
                 header
                 officialNumbers
                 comparisonPanel
                 actions
             }
-            .padding(18)
+            .padding(14)
         }
     }
 
@@ -156,7 +155,7 @@ struct TaxReturnCard: View {
                     .foregroundStyle(.secondary)
                 Text("Periodo d'imposta \(summary.taxPeriod)")
                     .font(.title3.bold())
-                HStack(spacing: 8) {
+                BadgeStack {
                     StatusBadge("Da dichiarazione", symbol: "checkmark.seal.fill", color: AppColor.sage)
                     StatusBadge("Da F24", symbol: "doc.plaintext.fill", color: AppColor.petrol)
                     StatusBadge("Stimato", symbol: "function", color: AppColor.amber)
@@ -212,7 +211,7 @@ struct TaxReturnCard: View {
             } label: {
                 Label("Modifica", systemImage: "pencil")
             }
-            .buttonStyle(.bordered)
+            .secondaryActionStyle()
 
             Spacer()
 
@@ -222,7 +221,7 @@ struct TaxReturnCard: View {
                 Label("Elimina", systemImage: "trash")
                     .labelStyle(.iconOnly)
             }
-            .buttonStyle(.bordered)
+            .secondaryActionStyle()
             .accessibilityLabel("Elimina dichiarazione \(summary.taxPeriod)")
         }
     }
@@ -271,7 +270,7 @@ struct TaxReturnEditorSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 14) {
                     ScreenIntro(
                         title: summary == nil ? "Nuova dichiarazione" : "Modifica dichiarazione",
                         subtitle: "Inserisci i dati ufficiali e confrontali con stime, accantonamenti e F24 gia registrati.",
@@ -286,7 +285,7 @@ struct TaxReturnEditorSheet: View {
                     inpsPanel
                     notesPanel
                 }
-                .padding(18)
+                .padding(14)
             }
             .navigationTitle(summary == nil ? "Nuova" : "Modifica")
             .toolbar {
@@ -319,16 +318,20 @@ struct TaxReturnEditorSheet: View {
                 } label: {
                     Label("2023 reale", systemImage: "doc.badge.gearshape")
                         .frame(maxWidth: .infinity)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
                 }
-                .buttonStyle(.bordered)
+                .secondaryActionStyle()
 
                 Button {
                     applyExample2024()
                 } label: {
                     Label("2024 parziale", systemImage: "doc.badge.clock")
                         .frame(maxWidth: .infinity)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
                 }
-                .buttonStyle(.bordered)
+                .secondaryActionStyle()
             }
         }
     }

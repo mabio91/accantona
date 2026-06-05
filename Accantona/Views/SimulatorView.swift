@@ -19,7 +19,7 @@ struct SimulatorView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Simulatore",
                     subtitle: "Prova incassi, recuperi e scadenze senza toccare i dati reali.",
@@ -39,7 +39,7 @@ struct SimulatorView: View {
                     )
                 }
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Simulatore")
         .appBackground()
@@ -66,7 +66,7 @@ struct SimulatorView: View {
                     .background(.background.opacity(0.54), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 AppTextField(
-                    title: "Percentuale accantonamento",
+                    title: "Percentuale da accantonare",
                     placeholder: percentInput(for: defaultReserveRate),
                     text: $reserveRateText,
                     keyboard: .decimalPad
@@ -74,9 +74,9 @@ struct SimulatorView: View {
 
                 targetPicker
 
-                Toggle("Includi fatture attese gia presenti", isOn: $includeExpectedInvoices)
+                Toggle("Includi altre fatture attese gia in app", isOn: $includeExpectedInvoices)
                     .toggleStyle(.switch)
-                Toggle("Includi recupero accantonamenti mancanti", isOn: $includeRecoveries)
+                Toggle("Includi quote arretrate da recuperare", isOn: $includeRecoveries)
                     .toggleStyle(.switch)
             }
         }
@@ -121,7 +121,7 @@ struct SimulatorView: View {
                 target: selectedTarget
             ),
             deadlines: deadlines,
-            parameters: parameters.first,
+            parameters: currentParameter,
             invoices: invoices,
             reserves: reserves,
             taxPayments: taxPayments,
@@ -141,7 +141,11 @@ struct SimulatorView: View {
     }
 
     private var defaultReserveRate: Decimal {
-        parameters.first?.appliedReserveRate ?? Decimal(string: "0.330346")!
+        currentParameter?.appliedReserveRate ?? Decimal(string: "0.330346")!
+    }
+
+    private var currentParameter: TaxParameters? {
+        TaxParameterResolver.currentParameter(parameters: parameters)
     }
 
     private func percentInput(for value: Decimal) -> String {
@@ -169,8 +173,8 @@ struct SimulatorResultCard: View {
     let reserveRate: Decimal
 
     var body: some View {
-        GlassSurface(cornerRadius: 26, tint: result.statusColor) {
-            VStack(alignment: .leading, spacing: 18) {
+        GlassSurface(cornerRadius: 20, tint: result.statusColor) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 8) {
                         StatusBadge(result.statusTitle, symbol: result.isCovered ? "checkmark.seal.fill" : "xmark.octagon.fill", color: result.statusColor)
@@ -190,16 +194,17 @@ struct SimulatorResultCard: View {
 
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Margine risultante")
+                        Text(result.projection.margin >= 0 ? "Avanzo dopo scadenza" : "Scoperto dopo scadenza")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        MoneyText(value: result.projection.margin, style: .system(size: 34, weight: .bold, design: .rounded), color: result.statusColor)
+                        MoneyText(value: result.projection.margin, style: .system(size: 26, weight: .bold, design: .rounded), color: result.statusColor)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 5) {
-                        Text("Accantoni")
+                        Text("Percentuale accantonata")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
                         Text(MoneyFormatting.percentage(reserveRate))
                             .font(.title3.bold())
                             .foregroundStyle(AppColor.petrol)
@@ -210,26 +215,26 @@ struct SimulatorResultCard: View {
                     SimulationMetricTile(
                         title: "Incassi necessari",
                         value: MoneyFormatting.money(result.requiredIncomeToCoverDeficit),
-                        subtitle: result.requiredIncomeToCoverDeficit > 0 ? "per coprire il deficit" : "non servono altri incassi",
+                        subtitle: result.requiredIncomeToCoverDeficit > 0 ? "per coprire lo scoperto" : "non servono altri incassi",
                         symbol: "arrow.up.forward.circle.fill",
                         tint: result.requiredIncomeToCoverDeficit > 0 ? AppColor.coral : AppColor.sage
                     )
                     SimulationMetricTile(
-                        title: "Puoi saltare",
+                        title: "Quota rinviabile",
                         value: MoneyFormatting.money(result.skippableAmount),
-                        subtitle: "prima di andare a zero",
+                        subtitle: "senza scendere sotto zero",
                         symbol: "minus.circle.fill",
                         tint: AppColor.amber
                     )
                     SimulationMetricTile(
-                        title: "Disponibile davvero",
+                        title: "Resta del nuovo incasso",
                         value: MoneyFormatting.money(result.availableAfterReserve),
                         subtitle: "dopo accantonamento",
                         symbol: "wallet.pass.fill",
                         tint: AppColor.sage
                     )
                     SimulationMetricTile(
-                        title: "Saldo previsto",
+                        title: "Saldo conto tasse previsto",
                         value: MoneyFormatting.money(result.projection.projectedBalance),
                         subtitle: "alla scadenza",
                         symbol: "calendar.badge.clock",
@@ -237,7 +242,7 @@ struct SimulatorResultCard: View {
                     )
                 }
             }
-            .padding(18)
+            .padding(14)
         }
     }
 }

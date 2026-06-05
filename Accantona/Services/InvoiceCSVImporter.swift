@@ -92,6 +92,7 @@ enum InvoiceCSVImporter {
     3/2026,Cliente Gamma,Retainer,2026-03-01,2026-03-30,2026-03-28,2500,2,incassata,Accantonamento parziale,500
     """
 
+    @MainActor
     static func preview(csv: String, existingInvoices: [Invoice]) -> InvoiceCSVImportPreview {
         let delimiter = detectDelimiter(in: csv)
         let parsedRows = parseRows(csv, delimiter: delimiter)

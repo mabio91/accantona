@@ -6,6 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		AA1000150000000000000015 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA00000C000000000000000C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA0000030000000000000003;
+			remoteInfo = Accantona;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		AA0000040000000000000004 /* Accantona.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Accantona.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA1000040000000000000004 /* AccantonaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AccantonaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -42,15 +52,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		AA00000B000000000000000B = {
-			isa = PBXGroup;
-			children = (
-				AA0000060000000000000006 /* Accantona */,
-				AA1000060000000000000006 /* AccantonaTests */,
-				AA0000050000000000000005 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
 		AA0000050000000000000005 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -58,6 +59,15 @@
 				AA1000040000000000000004 /* AccantonaTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		AA00000B000000000000000B = {
+			isa = PBXGroup;
+			children = (
+				AA0000060000000000000006 /* Accantona */,
+				AA1000060000000000000006 /* AccantonaTests */,
+				AA0000050000000000000005 /* Products */,
+			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -109,16 +119,6 @@
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXContainerItemProxy section */
-		AA1000150000000000000015 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AA00000C000000000000000C /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AA0000030000000000000003;
-			remoteInfo = Accantona;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		AA00000C000000000000000C /* Project object */ = {
@@ -328,7 +328,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 74744E6N6J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Accantona;
@@ -344,7 +344,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fabiomassimo.accantona;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fabiomassimo.accantona.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -369,7 +369,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 74744E6N6J;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Accantona;
@@ -385,7 +385,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fabiomassimo.accantona;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fabiomassimo.accantona.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

@@ -55,6 +55,10 @@ enum TaxPaymentAccounting {
     ) -> Validation? {
         let code = rawCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
 
+        if amountDebt < 0 || amountCompensated < 0 {
+            return Validation(title: "Importi non validi", message: "Debito e credito compensato non possono essere negativi.", isBlocking: true)
+        }
+
         if amountDebt == 0, amountCompensated == 0, amountPaid == 0 {
             return Validation(title: "Importi mancanti", message: "Inserisci almeno un debito, un credito compensato o un netto pagato.", isBlocking: true)
         }

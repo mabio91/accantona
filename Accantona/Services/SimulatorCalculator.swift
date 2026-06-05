@@ -96,6 +96,7 @@ enum SimulatorCalculator {
                 taxPayments: taxPayments,
                 snapshots: snapshots,
                 movements: movements,
+                parameterCatalog: scenarioParameters.map { [$0] } ?? [],
                 startingBalance: startingBalance,
                 fromDateExclusive: previousDeadlineDate
             )
@@ -169,8 +170,8 @@ enum SimulatorCalculator {
         let date = input.expectedIncomeDate.formatted(date: .abbreviated, time: .omitted)
         let reserve = MoneyFormatting.money(newReserve)
         let outcome = projection.margin >= 0
-            ? "sei coperto con \(MoneyFormatting.money(projection.margin.roundedMoney)) di margine"
-            : "vai sotto di \(MoneyFormatting.money(abs(projection.margin).roundedMoney))"
+            ? "la scadenza resta coperta con \(MoneyFormatting.money(projection.margin.roundedMoney)) di avanzo"
+            : "restano da coprire \(MoneyFormatting.money(abs(projection.margin).roundedMoney))"
 
         return "Se incassi \(income) entro \(date) e accantoni \(reserve), \(outcome)."
     }

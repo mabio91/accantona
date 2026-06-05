@@ -12,41 +12,46 @@ struct DashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 header
 
-                if let parameters = currentParameters {
-                    ReserveBreakdownView(
-                        breakdown: TaxCalculator.reserveBreakdown(for: latestIncome, parameters: parameters)
-                    )
+                if let latestBreakdown {
+                    ReserveBreakdownView(breakdown: latestBreakdown)
                 }
 
                 if let projection = nextDeadlineProjection {
-                    SmartDeadlineCard(projection: projection)
+                    DashboardDeadlineCard(projection: projection)
                 }
 
                 quickStats
                 fiscalTimeline
                 quickActions
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Accantona")
         .appBackground()
     }
 
     private var currentParameters: TaxParameters? {
-        parameters.first
+        TaxParameterResolver.currentParameter(parameters: parameters)
     }
 
     private var currentBalance: Decimal {
         TaxAccountLedger.balance(snapshots: snapshots, movements: movements)
     }
 
-    private var latestIncome: Decimal {
-        invoices.first(where: { $0.status == .paid })?.amount
-            ?? invoices.first?.amount
-            ?? 0
+    private var latestReferenceInvoice: Invoice? {
+        invoices.first(where: { $0.status == .paid }) ?? invoices.first
+    }
+
+    private var latestBreakdown: ReserveBreakdown? {
+        guard let invoice = latestReferenceInvoice,
+              let parameter = TaxParameterResolver.parameter(for: invoice, parameters: parameters) else {
+            return nil
+        }
+
+        return TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: parameter)
     }
 
     private var nextDeadline: TaxDeadline? {
@@ -62,7 +67,8 @@ struct DashboardView: View {
             reserves: reserves,
             taxPayments: taxPayments,
             snapshots: snapshots,
-            movements: movements
+            movements: movements,
+            parameterCatalog: parameters
         )
     }
 
@@ -75,15 +81,20 @@ struct DashboardView: View {
     private var paidInvoicesThisYear: Decimal {
         let year = Calendar.current.component(.year, from: .now)
         return invoices
-            .filter { $0.status == .paid && ($0.fiscalYear ?? year) == year }
+            .filter { invoice in
+                guard invoice.status == .paid else { return false }
+                let invoiceYear = invoice.fiscalYear
+                    ?? invoice.paidDate.map { Calendar.current.component(.year, from: $0) }
+                return invoiceYear == year
+            }
             .reduce(Decimal(0)) { $0 + $1.amount }
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Oggi")
-                .font(.largeTitle.bold())
-            Text("Quando incassi, sai subito quanto mettere da parte.")
+                .font(.title3.bold())
+            Text("Incassi, quote da mettere da parte e prossima scadenza in un colpo d'occhio.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -92,15 +103,15 @@ struct DashboardView: View {
 
     private var quickStats: some View {
         VStack(spacing: 10) {
-            MetricRow(title: "Saldo conto tasse", value: currentBalance, symbol: "building.columns.fill", color: AppColor.petrol)
-            MetricRow(title: "Da accantonare", value: pendingReserveTotal, symbol: "tray.and.arrow.down.fill", color: AppColor.amber)
-            MetricRow(title: "Incassato quest'anno", value: paidInvoicesThisYear, symbol: "checkmark.circle.fill", color: AppColor.sage)
+            MetricRow(title: "Saldo nel conto tasse", value: currentBalance, symbol: "building.columns.fill", color: AppColor.petrol)
+            MetricRow(title: "Quote ancora da trasferire", value: pendingReserveTotal, symbol: "tray.and.arrow.down.fill", color: AppColor.amber)
+            MetricRow(title: "Incassi fiscali dell'anno", value: paidInvoicesThisYear, symbol: "checkmark.circle.fill", color: AppColor.sage)
         }
     }
 
     private var fiscalTimeline: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Timeline fiscale")
+            Text("Prossime scadenze fiscali")
                 .font(.headline)
             ForEach(deadlines.prefix(3)) { deadline in
                 HStack(spacing: 12) {
@@ -135,12 +146,80 @@ struct DashboardView: View {
             NavigationLink {
                 CashView()
             } label: {
-                Label("Aggiorna saldo", systemImage: "arrow.triangle.2.circlepath")
+                Label("Allinea cassa", systemImage: "arrow.triangle.2.circlepath")
                     .frame(maxWidth: .infinity)
             }
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .primaryActionStyle()
+    }
+}
+
+struct DashboardDeadlineCard: View {
+    let projection: DeadlineCoverageProjection
+
+    var body: some View {
+        GlassSurface(cornerRadius: 18, tint: projection.risk.color) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Prossima scadenza")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Text(projection.deadline.title)
+                            .font(.title3.bold())
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.84)
+                        Text(projection.deadline.date.formatted(date: .long, time: .omitted))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 5) {
+                        Text(projection.margin >= 0 ? "Avanzo dopo scadenza" : "Scoperto dopo scadenza")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                        MoneyText(
+                            value: projection.margin,
+                            style: .title3.weight(.bold),
+                            color: projection.margin >= 0 ? AppColor.sage : AppColor.coral
+                        )
+                    }
+                }
+
+                BadgeStack {
+                    StatusBadge(projection.certaintyTitle, symbol: projection.certaintySymbol, color: projection.certaintyColor)
+                    StatusBadge(projection.risk.title, symbol: projection.risk.symbol, color: projection.risk.color)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    GeometryReader { proxy in
+                        let width = proxy.size.width
+                        let progress = CGFloat(truncating: projection.coverageRatio as NSDecimalNumber)
+                        Capsule()
+                            .fill(.secondary.opacity(0.16))
+                            .overlay(alignment: .leading) {
+                                Capsule()
+                                    .fill(projection.risk.color)
+                                    .frame(width: max(8, width * progress))
+                            }
+                    }
+                    .frame(height: 10)
+
+                    HStack {
+                        Text("Gia coperto")
+                            .foregroundStyle(.secondary)
+                        MoneyText(value: projection.coveredAmount, style: .caption.weight(.semibold))
+                        Spacer()
+                        Text("Ancora da pagare")
+                            .foregroundStyle(.secondary)
+                        MoneyText(value: projection.remainingDue, style: .caption.weight(.semibold))
+                    }
+                    .font(.caption)
+                }
+            }
+            .padding(14)
+        }
     }
 }
 
@@ -174,8 +253,8 @@ struct TaxDeadlineCard: View {
     var body: some View {
         let result = TaxCalculator.coverage(required: deadline.estimatedAmount, available: balance, threshold: threshold)
 
-        GlassSurface(cornerRadius: 24, tint: AppColor.petrol) {
-            VStack(alignment: .leading, spacing: 16) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.petrol) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Prossima scadenza")
@@ -197,7 +276,7 @@ struct TaxDeadlineCard: View {
                 CoverageBar(result: result)
 
                 HStack {
-                    Text(result.margin >= 0 ? "Margine" : "Deficit")
+                    Text(result.margin >= 0 ? "Avanzo dopo scadenza" : "Scoperto dopo scadenza")
                         .foregroundStyle(.secondary)
                     Spacer()
                     MoneyText(
@@ -207,7 +286,7 @@ struct TaxDeadlineCard: View {
                     )
                 }
             }
-            .padding(18)
+            .padding(14)
         }
     }
 

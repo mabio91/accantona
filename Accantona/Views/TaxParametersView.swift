@@ -15,21 +15,21 @@ struct TaxParametersView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Parametri fiscali",
-                    subtitle: "Le aliquote restano modificabili e leggibili. Ogni nuova versione salva il tasso applicato agli accantonamenti futuri.",
+                    subtitle: "Qui decidi quale percentuale mettere da parte quando registri un nuovo incasso.",
                     symbol: "slider.horizontal.3",
                     tint: AppColor.petrol
                 )
 
-            if let current = parameters.first {
+                if let current = displayedParameter {
                     currentParametersCard(current)
                 }
 
                 editorCard
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Parametri fiscali")
         .appBackground()
@@ -39,7 +39,7 @@ struct TaxParametersView: View {
             Text(persistenceAlert?.message ?? "")
         }
         .onAppear {
-            if let current = parameters.first {
+            if let current = displayedParameter {
                 yearText = "\(current.year + 1)"
             } else {
                 yearText = "\(Calendar.current.component(.year, from: .now))"
@@ -47,45 +47,49 @@ struct TaxParametersView: View {
         }
     }
 
+    private var displayedParameter: TaxParameters? {
+        TaxParameterResolver.currentParameter(parameters: parameters)
+    }
+
     private func currentParametersCard(_ current: TaxParameters) -> some View {
-        GlassSurface(cornerRadius: 24, tint: AppColor.mint) {
-            VStack(alignment: .leading, spacing: 16) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.mint) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Versione \(current.year)")
                             .font(.headline)
-                        Text("Accantonamento applicato")
+                        Text("Percentuale da mettere da parte")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
                     Text(MoneyFormatting.percentage(current.appliedReserveRate))
-                        .font(.title2.bold())
+                        .font(.title3.bold())
                         .monospacedDigit()
                         .foregroundStyle(AppColor.sage)
                 }
 
                 VStack(spacing: 10) {
                     ParameterRow(title: "Imposta sostitutiva", value: MoneyFormatting.percentage(current.substituteTaxRate), note: "Aliquota configurabile dall'utente.")
-                    ParameterRow(title: "Coefficiente redditivita", value: MoneyFormatting.percentage(current.profitabilityCoefficient), note: "Applicato agli incassi.")
+                    ParameterRow(title: "Coefficiente redditivita", value: MoneyFormatting.percentage(current.profitabilityCoefficient), note: "Parte dell'incasso su cui stimare imposte e INPS.")
                     ParameterRow(title: "INPS Gestione Separata", value: MoneyFormatting.percentage(current.inpsRate), note: "Quota contributiva stimata.")
-                    ParameterRow(title: "Margine prudenziale", value: MoneyFormatting.percentage(current.prudentialExtraRate), note: "Extra sul totale incassato.")
-                    ParameterRow(title: "Soglia margine basso", value: MoneyFormatting.money(current.minimumMarginThreshold), note: "Usata per lo stato della copertura.")
+                    ParameterRow(title: "Extra prudenziale", value: MoneyFormatting.percentage(current.prudentialExtraRate), note: "Piccola quota di sicurezza aggiunta al totale incassato.")
+                    ParameterRow(title: "Soglia avanzo basso", value: MoneyFormatting.money(current.minimumMarginThreshold), note: "Sotto questa soglia una scadenza e segnalata come coperta ma stretta.")
                 }
             }
-            .padding(18)
+            .padding(14)
         }
     }
 
     private var editorCard: some View {
-        Panel(title: "Nuova versione", subtitle: "Valori percentuali espressi come 15, 78, 26,07 e 1.", symbol: "plus.forwardslash.minus", tint: AppColor.sage) {
+        Panel(title: "Nuova versione", subtitle: "Inserisci le percentuali come 15, 78, 26,07 e 1.", symbol: "plus.forwardslash.minus", tint: AppColor.sage) {
             VStack(spacing: 14) {
                 AppTextField(title: "Anno", placeholder: "2026", text: $yearText, keyboard: .numberPad)
                 AppTextField(title: "Imposta sostitutiva", placeholder: "15", text: $substituteTaxRateText, keyboard: .decimalPad)
                 AppTextField(title: "Coefficiente redditivita", placeholder: "78", text: $profitabilityText, keyboard: .decimalPad)
                 AppTextField(title: "INPS Gestione Separata", placeholder: "26,07", text: $inpsText, keyboard: .decimalPad)
-                AppTextField(title: "Margine prudenziale", placeholder: "1", text: $extraText, keyboard: .decimalPad)
-                AppTextField(title: "Soglia margine minimo", placeholder: "250", text: $thresholdText, keyboard: .decimalPad)
+                AppTextField(title: "Extra prudenziale", placeholder: "1", text: $extraText, keyboard: .decimalPad)
+                AppTextField(title: "Soglia avanzo minimo", placeholder: "250", text: $thresholdText, keyboard: .decimalPad)
 
                 Button {
                     save()
@@ -93,8 +97,7 @@ struct TaxParametersView: View {
                     Label("Salva parametri", systemImage: "checkmark.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .primaryActionStyle()
                 .padding(.top, 4)
             }
         }
@@ -104,7 +107,7 @@ struct TaxParametersView: View {
         let year = Int(yearText) ?? Calendar.current.component(.year, from: .now)
         if let existing = parameters.first(where: { $0.year == year }) {
             existing.substituteTaxRate = parsePercent(substituteTaxRateText)
-            existing.profitabilityCoefficient = parsePercent(profitabilityText)
+            existing.profitabilityCoefficient = parsePercent(profitabilityText, allowsWhole: true)
             existing.inpsRate = parsePercent(inpsText)
             existing.prudentialExtraRate = parsePercent(extraText)
             existing.minimumMarginThreshold = parseDecimal(thresholdText)
@@ -112,7 +115,7 @@ struct TaxParametersView: View {
             modelContext.insert(TaxParameters(
                 year: year,
                 substituteTaxRate: parsePercent(substituteTaxRateText),
-                profitabilityCoefficient: parsePercent(profitabilityText),
+                profitabilityCoefficient: parsePercent(profitabilityText, allowsWhole: true),
                 inpsRate: parsePercent(inpsText),
                 prudentialExtraRate: parsePercent(extraText),
                 minimumMarginThreshold: parseDecimal(thresholdText)
@@ -125,9 +128,8 @@ struct TaxParametersView: View {
         }
     }
 
-    private func parsePercent(_ text: String) -> Decimal {
-        let value = parseDecimal(text)
-        return value > 1 ? value / 100 : value
+    private func parsePercent(_ text: String, allowsWhole: Bool = false) -> Decimal {
+        TaxParameterInputParser.percent(text, allowsWhole: allowsWhole)
     }
 
     private func parseDecimal(_ text: String) -> Decimal {

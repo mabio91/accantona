@@ -260,10 +260,10 @@ final class TaxPayment {
 
     var coveredAmount: Decimal {
         let explicitDebt = amountDebt?.roundedMoney ?? 0
-        if explicitDebt != 0 {
+        if explicitDebt > 0 {
             return explicitDebt
         }
-        return (amountPaid + amountCompensated).roundedMoney
+        return max(amountPaid + amountCompensated, 0).roundedMoney
     }
 
     init(

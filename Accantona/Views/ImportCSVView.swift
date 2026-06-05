@@ -16,7 +16,7 @@ struct ImportCSVView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Import CSV",
                     subtitle: "Carica fatture nel formato Accantona, controlla l'anteprima e salva solo le righe valide.",
@@ -41,7 +41,7 @@ struct ImportCSVView: View {
                     }
                 }
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Import CSV")
         .appBackground()
@@ -59,7 +59,7 @@ struct ImportCSVView: View {
     }
 
     private var templatePanel: some View {
-        GlassSurface(cornerRadius: 24, tint: AppColor.mint) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.mint) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 5) {
@@ -84,7 +84,7 @@ struct ImportCSVView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .padding(18)
+            .padding(14)
         }
     }
 
@@ -103,8 +103,7 @@ struct ImportCSVView: View {
                 Label("Seleziona CSV", systemImage: "doc.badge.plus")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .primaryActionStyle()
         }
     }
 
@@ -140,15 +139,14 @@ struct ImportCSVView: View {
                     Label("Importa righe valide", systemImage: "square.and.arrow.down.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .primaryActionStyle()
                 .disabled(preview.importableRows.isEmpty)
             }
         }
     }
 
     private func summaryPanel(_ summary: CSVImportSummary) -> some View {
-        GlassSurface(cornerRadius: 24, tint: AppColor.sage) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.sage) {
             VStack(alignment: .leading, spacing: 14) {
                 StatusBadge("Import completato", symbol: "checkmark.seal.fill", color: AppColor.sage)
                 HStack(spacing: 10) {
@@ -156,11 +154,11 @@ struct ImportCSVView: View {
                     ImportStatTile(title: "Saltate", value: summary.skipped, tint: AppColor.amber)
                     ImportStatTile(title: "Errori", value: summary.errors, tint: AppColor.coral)
                 }
-                Text("\(summary.reservesCreated) accantonamenti generati, \(summary.movementsCreated) movimenti cassa creati.")
+                Text("\(summary.reservesCreated) quote generate, \(summary.movementsCreated) movimenti conto tasse creati.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            .padding(18)
+            .padding(14)
         }
     }
 
@@ -200,8 +198,8 @@ struct ImportCSVView: View {
             movementsCreated: 0
         )
 
-        let parameter = currentParameters()
         let calendar = Calendar.current
+        var parametersByYear = Dictionary(uniqueKeysWithValues: parameters.map { ($0.year, $0) })
 
         for row in preview.importableRows {
             guard let values = row.values else { continue }
@@ -224,6 +222,10 @@ struct ImportCSVView: View {
             summary.imported += 1
 
             if let paidDate = values.paidDate {
+                let parameter = parameter(
+                    forFiscalYear: calendar.component(.year, from: paidDate),
+                    cache: &parametersByYear
+                )
                 let breakdown = TaxCalculator.reserveBreakdown(for: values.amount, parameters: parameter)
                 let reservedAmount = min(values.reservedAmount, breakdown.prudentialReserve).roundedMoney
                 let reserve = ReserveEntry(
@@ -262,13 +264,14 @@ struct ImportCSVView: View {
         }
     }
 
-    private func currentParameters() -> TaxParameters {
-        if let parameter = parameters.first {
+    private func parameter(forFiscalYear fiscalYear: Int, cache: inout [Int: TaxParameters]) -> TaxParameters {
+        if let parameter = cache[fiscalYear] {
             return parameter
         }
 
-        let parameter = TaxParameters(year: Calendar.current.component(.year, from: .now))
+        let parameter = TaxParameters(year: fiscalYear)
         modelContext.insert(parameter)
+        cache[fiscalYear] = parameter
         return parameter
     }
 
@@ -300,6 +303,8 @@ struct ImportStatTile: View {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
             Text("\(value)")
                 .font(.title3.bold())
                 .foregroundStyle(tint)
@@ -324,6 +329,8 @@ struct ImportPreviewRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.82)
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -3,9 +3,9 @@ import SwiftUI
 
 enum ReserveFilter: String, CaseIterable, Identifiable {
     case all = "Tutti"
-    case pending = "Da accantonare"
+    case pending = "Da trasferire"
     case partial = "Parziali"
-    case completed = "Accantonati"
+    case completed = "Sul conto tasse"
     case recovery = "Da recuperare"
 
     var id: String { rawValue }
@@ -58,10 +58,10 @@ struct ReservesView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Accantonamenti",
-                    subtitle: "Controlla cosa va trasferito sul conto tasse, cosa e gia coperto e cosa va recuperato.",
+                    subtitle: "Ogni incasso genera una quota da trasferire sul conto tasse. Qui vedi cosa manca e cosa e gia stato spostato.",
                     symbol: "tray.and.arrow.down.fill",
                     tint: AppColor.petrol
                 )
@@ -70,7 +70,7 @@ struct ReservesView: View {
                 filterBar
                 reservesPanel
             }
-            .padding(18)
+            .padding(14)
         }
         .navigationTitle("Accantonamenti")
         .appBackground()
@@ -100,37 +100,37 @@ struct ReservesView: View {
     }
 
     private var totalsHeader: some View {
-        GlassSurface(cornerRadius: 24, tint: AppColor.mint) {
-            VStack(alignment: .leading, spacing: 16) {
+        GlassSurface(cornerRadius: 18, tint: AppColor.mint) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("Disciplina fiscale")
+                        Text("Quote fiscali dagli incassi")
                             .font(.headline)
-                        Text("Quote maturate dagli incassi")
+                        Text("Da trasferire o gia sul conto tasse")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    StatusBadge("Ledger cassa", symbol: "arrow.triangle.2.circlepath", color: AppColor.sage)
+                    StatusBadge("Conto tasse", symbol: "arrow.triangle.2.circlepath", color: AppColor.sage)
                 }
 
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Da recuperare")
+                        Text("Ancora da trasferire")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        MoneyText(value: totalToRecover, style: .system(size: 32, weight: .bold, design: .rounded), color: totalToRecover > 0 ? AppColor.coral : AppColor.sage)
+                        MoneyText(value: totalToRecover, style: .system(size: 26, weight: .bold, design: .rounded), color: totalToRecover > 0 ? AppColor.coral : AppColor.sage)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 6) {
-                        Text("Gia accantonato")
+                        Text("Gia sul conto tasse")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
-                        MoneyText(value: totalReserved, style: .title2.weight(.bold), color: AppColor.petrol)
+                        MoneyText(value: totalReserved, style: .title3.weight(.bold), color: AppColor.petrol)
                     }
                 }
             }
-            .padding(18)
+            .padding(14)
         }
     }
 
@@ -164,7 +164,7 @@ struct ReservesView: View {
     private var reservesPanel: some View {
         Panel(
             title: selectedFilter.rawValue,
-            subtitle: filteredReserves.isEmpty ? "Nessun accantonamento in questo stato." : "\(filteredReserves.count) movimenti",
+            subtitle: filteredReserves.isEmpty ? "Nessuna quota in questo stato." : "\(filteredReserves.count) quote",
             symbol: selectedFilter.symbol,
             tint: selectedFilter.tint
         ) {
@@ -195,14 +195,14 @@ struct ReservesView: View {
     }
 
     private func partialReserveSheet(_ reserve: ReserveEntry) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             Capsule()
                 .fill(.secondary.opacity(0.28))
                 .frame(width: 42, height: 5)
                 .frame(maxWidth: .infinity)
 
-            Text("Accantona una parte")
-                .font(.title.bold())
+            Text("Trasferisci una parte")
+                .font(.title3.bold())
 
             ReserveAmountSummary(
                 incomeAmount: reserve.incomeAmount,
@@ -225,11 +225,10 @@ struct ReservesView: View {
                 Label("Registra trasferimento", systemImage: "tray.and.arrow.down.fill")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .primaryActionStyle()
             .disabled(parseDecimal(partialAmountText) <= 0)
         }
-        .padding(20)
+        .padding(16)
         .appBackground()
     }
 
@@ -339,8 +338,10 @@ struct ReserveCard: View {
                     } label: {
                         Label("Tutto", systemImage: "checkmark.circle.fill")
                             .frame(maxWidth: .infinity)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .primaryActionStyle()
                     .disabled(missingAmount <= 0)
 
                     Button {
@@ -348,8 +349,10 @@ struct ReserveCard: View {
                     } label: {
                         Label("Parte", systemImage: "circle.lefthalf.filled")
                             .frame(maxWidth: .infinity)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
                     }
-                    .buttonStyle(.bordered)
+                    .secondaryActionStyle()
                     .disabled(missingAmount <= 0)
 
                     Button {
@@ -358,7 +361,7 @@ struct ReserveCard: View {
                         Label("Recupera", systemImage: "arrow.counterclockwise")
                             .labelStyle(.iconOnly)
                     }
-                    .buttonStyle(.bordered)
+                    .secondaryActionStyle()
                     .tint(AppColor.coral)
                     .disabled(reserve.status == .skipped)
                     .accessibilityLabel("Segna come da recuperare")
@@ -380,9 +383,9 @@ struct ReserveCard: View {
 
     private var statusTitle: String {
         switch reserve.status {
-        case .pending: "Da accantonare"
-        case .partial: "Parziale"
-        case .completed: "Accantonato"
+        case .pending: "Da trasferire"
+        case .partial: "Trasferito in parte"
+        case .completed: "Sul conto tasse"
         case .skipped: "Da recuperare"
         case .recovered: "Recuperato"
         }
@@ -421,10 +424,10 @@ struct ReserveAmountSummary: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            DetailRow(title: "Incasso", value: MoneyFormatting.money(incomeAmount))
-            DetailRow(title: "Dovuto", value: MoneyFormatting.money(dueAmount))
-            DetailRow(title: "Accantonato", value: MoneyFormatting.money(reservedAmount))
-            DetailRow(title: "Mancante", value: MoneyFormatting.money(missingAmount))
+            DetailRow(title: "Incasso collegato", value: MoneyFormatting.money(incomeAmount))
+            DetailRow(title: "Da mettere da parte", value: MoneyFormatting.money(dueAmount))
+            DetailRow(title: "Gia trasferito", value: MoneyFormatting.money(reservedAmount))
+            DetailRow(title: "Ancora da trasferire", value: MoneyFormatting.money(missingAmount))
         }
         .background(.regularMaterial.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
