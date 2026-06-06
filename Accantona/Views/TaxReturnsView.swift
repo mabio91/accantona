@@ -76,7 +76,7 @@ struct TaxReturnsView: View {
             }
             Button("Annulla", role: .cancel) { }
         } message: {
-            Text("Rimuovero solo il riepilogo dichiarazione. Fatture, F24 e movimenti conto tasse restano invariati.")
+            Text("Rimuoverò solo il riepilogo dichiarazione. Fatture, F24 e movimenti conto tasse restano invariati.")
         }
         .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
             Button("OK", role: .cancel) { }
@@ -273,7 +273,7 @@ struct TaxReturnEditorSheet: View {
                 VStack(alignment: .leading, spacing: 14) {
                     ScreenIntro(
                         title: summary == nil ? "Nuova dichiarazione" : "Modifica dichiarazione",
-                        subtitle: "Inserisci i dati ufficiali e confrontali con stime, accantonamenti e F24 gia registrati.",
+                        subtitle: "Inserisci i dati ufficiali e confrontali con stime, accantonamenti e F24 già registrati.",
                         symbol: "doc.text.magnifyingglass",
                         tint: AppColor.petrol
                     )
@@ -349,7 +349,7 @@ struct TaxReturnEditorSheet: View {
         Panel(title: "Quadro LM", subtitle: "Dati reddituali ufficiali della dichiarazione.", symbol: "sum", tint: AppColor.sage) {
             VStack(spacing: 14) {
                 AppTextField(title: "Ricavi/compensi", placeholder: "0,00", text: $revenuesText, keyboard: .numbersAndPunctuation)
-                AppTextField(title: "Coefficiente redditivita", placeholder: "78%", text: $coefficientText, keyboard: .numbersAndPunctuation)
+                AppTextField(title: "Coefficiente redditività", placeholder: "78%", text: $coefficientText, keyboard: .numbersAndPunctuation)
                 AppTextField(title: "Reddito lordo", placeholder: "0,00", text: $grossIncomeText, keyboard: .numbersAndPunctuation)
                 AppTextField(title: "Contributi dedotti", placeholder: "0,00", text: $deductedContributionsText, keyboard: .numbersAndPunctuation)
                 AppTextField(title: "Reddito netto imponibile", placeholder: "0,00", text: $taxableNetIncomeText, keyboard: .numbersAndPunctuation)
@@ -358,7 +358,7 @@ struct TaxReturnEditorSheet: View {
     }
 
     private var taxPanel: some View {
-        Panel(title: "Imposta sostitutiva", subtitle: "Dovuto, acconti gia versati e saldo o credito finale.", symbol: "percent", tint: AppColor.amber) {
+        Panel(title: "Imposta sostitutiva", subtitle: "Dovuto, acconti già versati e saldo o credito finale.", symbol: "percent", tint: AppColor.amber) {
             VStack(spacing: 14) {
                 AppTextField(title: "Imposta dovuta", placeholder: "0,00", text: $substituteTaxDueText, keyboard: .numbersAndPunctuation)
                 AppTextField(title: "Acconti imposta versati", placeholder: "0,00", text: $substituteTaxAdvancesText, keyboard: .numbersAndPunctuation)

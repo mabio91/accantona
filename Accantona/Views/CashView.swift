@@ -109,12 +109,12 @@ struct CashView: View {
             VStack(spacing: 12) {
                 VStack(spacing: 0) {
                     DetailRow(title: "Quote maturate dagli incassi", value: MoneyFormatting.money(theoreticalReserve))
-                    DetailRow(title: "Gia trasferito sul conto tasse", value: MoneyFormatting.money(actualReserve))
+                    DetailRow(title: "Già trasferito sul conto tasse", value: MoneyFormatting.money(actualReserve))
                     DetailRow(title: "Ancora da trasferire", value: MoneyFormatting.money(max(theoreticalReserve - actualReserve, 0)))
                 }
 
                 if pendingReserves.isEmpty {
-                    EmptyStateView(symbol: "checkmark.seal", title: "Tutto allineato", message: "Le quote maturate risultano gia trasferite oppure non ci sono incassi da accantonare.")
+                    EmptyStateView(symbol: "checkmark.seal", title: "Tutto allineato", message: "Le quote maturate risultano già trasferite oppure non ci sono incassi da accantonare.")
                 } else {
                     ForEach(pendingReserves.prefix(5)) { reserve in
                         PendingReserveRow(reserve: reserve) {

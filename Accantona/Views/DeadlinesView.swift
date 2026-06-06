@@ -19,7 +19,7 @@ struct DeadlinesView: View {
             VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Scadenze",
-                    subtitle: "Per ogni data vedi cosa e gia coperto, cosa resta da pagare e il saldo previsto dopo il pagamento.",
+                    subtitle: "Per ogni data vedi cosa è già coperto, cosa resta da pagare e il saldo previsto dopo il pagamento.",
                     symbol: "calendar.badge.clock",
                     tint: AppColor.petrol
                 )
@@ -166,7 +166,7 @@ struct SmartDeadlineCard: View {
             .frame(height: 12)
 
             HStack {
-                Text("Gia coperto")
+                Text("Copertura prevista")
                     .foregroundStyle(.secondary)
                 MoneyText(value: projection.coveredAmount, style: .caption.weight(.semibold))
                 Spacer()
@@ -181,7 +181,7 @@ struct SmartDeadlineCard: View {
     private var primaryNumbers: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Saldo conto tasse alla data")
+                Text("Saldo previsto alla data")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 MoneyText(value: projection.projectedBalance, style: .title3.weight(.bold), color: AppColor.petrol)
@@ -200,7 +200,7 @@ struct SmartDeadlineCard: View {
     private var forecastBreakdown: some View {
         VStack(spacing: 0) {
             DetailRow(title: "Saldo conto tasse iniziale", value: MoneyFormatting.money(projection.currentBalance))
-            DetailRow(title: "Gia coperto da F24", value: MoneyFormatting.money(projection.paidByF24))
+            DetailRow(title: "Già coperto da F24", value: MoneyFormatting.money(projection.paidByF24))
             DetailRow(title: "Ancora da pagare", value: MoneyFormatting.money(projection.remainingDue))
             DetailRow(title: "Quote arretrate recuperabili", value: MoneyFormatting.money(projection.recoverableReserves))
             DetailRow(title: "Nuovi incassi entro la data", value: MoneyFormatting.money(projection.futureIncome))

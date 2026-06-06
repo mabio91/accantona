@@ -71,10 +71,10 @@ struct TaxParametersView: View {
 
                 VStack(spacing: 10) {
                     ParameterRow(title: "Imposta sostitutiva", value: MoneyFormatting.percentage(current.substituteTaxRate), note: "Aliquota configurabile dall'utente.")
-                    ParameterRow(title: "Coefficiente redditivita", value: MoneyFormatting.percentage(current.profitabilityCoefficient), note: "Parte dell'incasso su cui stimare imposte e INPS.")
+                    ParameterRow(title: "Coefficiente redditività", value: MoneyFormatting.percentage(current.profitabilityCoefficient), note: "Parte dell'incasso su cui stimare imposte e INPS.")
                     ParameterRow(title: "INPS Gestione Separata", value: MoneyFormatting.percentage(current.inpsRate), note: "Quota contributiva stimata.")
                     ParameterRow(title: "Extra prudenziale", value: MoneyFormatting.percentage(current.prudentialExtraRate), note: "Piccola quota di sicurezza aggiunta al totale incassato.")
-                    ParameterRow(title: "Soglia avanzo basso", value: MoneyFormatting.money(current.minimumMarginThreshold), note: "Sotto questa soglia una scadenza e segnalata come coperta ma stretta.")
+                    ParameterRow(title: "Soglia avanzo basso", value: MoneyFormatting.money(current.minimumMarginThreshold), note: "Sotto questa soglia una scadenza è segnalata come coperta ma stretta.")
                 }
             }
             .padding(14)
@@ -86,7 +86,7 @@ struct TaxParametersView: View {
             VStack(spacing: 14) {
                 AppTextField(title: "Anno", placeholder: "2026", text: $yearText, keyboard: .numberPad)
                 AppTextField(title: "Imposta sostitutiva", placeholder: "15", text: $substituteTaxRateText, keyboard: .decimalPad)
-                AppTextField(title: "Coefficiente redditivita", placeholder: "78", text: $profitabilityText, keyboard: .decimalPad)
+                AppTextField(title: "Coefficiente redditività", placeholder: "78", text: $profitabilityText, keyboard: .decimalPad)
                 AppTextField(title: "INPS Gestione Separata", placeholder: "26,07", text: $inpsText, keyboard: .decimalPad)
                 AppTextField(title: "Extra prudenziale", placeholder: "1", text: $extraText, keyboard: .decimalPad)
                 AppTextField(title: "Soglia avanzo minimo", placeholder: "250", text: $thresholdText, keyboard: .decimalPad)

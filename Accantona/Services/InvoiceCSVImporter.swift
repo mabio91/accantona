@@ -164,7 +164,7 @@ enum InvoiceCSVImporter {
         let reservedAmount = try parseOptionalDecimal(columns[10], field: "importo_accantonato")
 
         guard amount > 0 else { throw ImportError("Importo deve essere maggiore di zero") }
-        if reservedAmount < 0 { throw ImportError("Importo accantonato non puo essere negativo") }
+        if reservedAmount < 0 { throw ImportError("Importo accantonato non può essere negativo") }
         if status == .paid, paidDate == nil { throw ImportError("Una fattura incassata deve avere data_incasso") }
 
         return ImportedInvoiceValues(

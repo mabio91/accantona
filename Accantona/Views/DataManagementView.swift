@@ -132,7 +132,7 @@ struct DataManagementView: View {
             Button("Annulla", role: .cancel) { }
             Button("Elimina definitivamente", role: .destructive, action: deleteAllData)
         } message: {
-            Text("Operazione irreversibile. Conferma solo se hai gia creato un backup o sei sicuro di voler azzerare l'app.")
+            Text("Operazione irreversibile. Conferma solo se hai già creato un backup o sei sicuro di voler azzerare l'app.")
         }
     }
 

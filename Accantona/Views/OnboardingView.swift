@@ -140,7 +140,7 @@ struct OnboardingView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Regime forfettario")
                                 .font(.headline)
-                            Text("Imposta sostitutiva, coefficiente di redditivita e INPS configurabili.")
+                            Text("Imposta sostitutiva, coefficiente di redditività e INPS configurabili.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -158,7 +158,7 @@ struct OnboardingView: View {
         OnboardingPanel(title: "Parametri iniziali", subtitle: "Da questi valori Accantona calcola la percentuale da mettere da parte a ogni incasso.", symbol: "percent", tint: AppColor.amber) {
             VStack(spacing: 12) {
                 AppTextField(title: "Imposta sostitutiva", placeholder: "15", text: $substituteTaxRateText, keyboard: .decimalPad)
-                AppTextField(title: "Coefficiente redditivita", placeholder: "78", text: $profitabilityCoefficientText, keyboard: .decimalPad)
+                AppTextField(title: "Coefficiente redditività", placeholder: "78", text: $profitabilityCoefficientText, keyboard: .decimalPad)
                 AppTextField(title: "INPS Gestione Separata", placeholder: "26,07", text: $inpsRateText, keyboard: .decimalPad)
                 AppTextField(title: "Extra prudenziale", placeholder: "1", text: $prudentialExtraRateText, keyboard: .decimalPad)
 
@@ -178,7 +178,7 @@ struct OnboardingView: View {
     }
 
     private var balanceStep: some View {
-        OnboardingPanel(title: "Saldo conto tasse", subtitle: "Inserisci quanto hai gia sul conto dedicato alle tasse. Poi trasferimenti e F24 aggiorneranno il saldo.", symbol: "building.columns.fill", tint: AppColor.sage) {
+        OnboardingPanel(title: "Saldo conto tasse", subtitle: "Inserisci quanto hai già sul conto dedicato alle tasse. Poi trasferimenti e F24 aggiorneranno il saldo.", symbol: "building.columns.fill", tint: AppColor.sage) {
             VStack(spacing: 12) {
                 AppTextField(title: "Saldo iniziale", placeholder: "7.534,41", text: $initialBalanceText, keyboard: .decimalPad)
                 DetailRow(title: "Movimento creato", value: MoneyFormatting.money(initialBalance.roundedMoney))
@@ -219,7 +219,7 @@ struct OnboardingView: View {
         GlassSurface(cornerRadius: 20, tint: AppColor.sage) {
             VStack(alignment: .leading, spacing: 12) {
                 StatusBadge("Pronto", symbol: "checkmark.seal.fill", color: AppColor.sage)
-                Text("Accantona e configurata")
+                Text("Accantona è configurata")
                     .font(.title3.bold())
 
                 VStack(spacing: 0) {

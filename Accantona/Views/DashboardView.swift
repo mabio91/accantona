@@ -175,7 +175,7 @@ struct DashboardDeadlineCard: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 5) {
-                        Text(projection.margin >= 0 ? "Avanzo dopo scadenza" : "Scoperto dopo scadenza")
+                        Text(projection.margin >= 0 ? "Margine previsto" : "Scoperto previsto")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.trailing)
@@ -207,7 +207,7 @@ struct DashboardDeadlineCard: View {
                     .frame(height: 10)
 
                     HStack {
-                        Text("Gia coperto")
+                        Text("Copertura prevista")
                             .foregroundStyle(.secondary)
                         MoneyText(value: projection.coveredAmount, style: .caption.weight(.semibold))
                         Spacer()
@@ -276,7 +276,7 @@ struct TaxDeadlineCard: View {
                 CoverageBar(result: result)
 
                 HStack {
-                    Text(result.margin >= 0 ? "Avanzo dopo scadenza" : "Scoperto dopo scadenza")
+                    Text(result.margin >= 0 ? "Margine previsto" : "Scoperto previsto")
                         .foregroundStyle(.secondary)
                     Spacer()
                     MoneyText(

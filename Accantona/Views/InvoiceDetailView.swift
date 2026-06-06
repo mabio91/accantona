@@ -332,7 +332,7 @@ struct PaidConfirmationView: View {
                         onLater()
                         dismiss()
                     } label: {
-                        Label("Piu tardi", systemImage: "clock.fill")
+                    Label("Più tardi", systemImage: "clock.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .secondaryActionStyle()
@@ -344,7 +344,6 @@ struct PaidConfirmationView: View {
     }
 
     private func parseDecimal(_ text: String) -> Decimal {
-        let normalized = text.replacingOccurrences(of: ",", with: ".")
-        return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")) ?? 0
+        MoneyFormatting.parseDecimal(text)
     }
 }

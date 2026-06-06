@@ -74,7 +74,7 @@ struct SimulatorView: View {
 
                 targetPicker
 
-                Toggle("Includi altre fatture attese gia in app", isOn: $includeExpectedInvoices)
+                Toggle("Includi altre fatture attese già in app", isOn: $includeExpectedInvoices)
                     .toggleStyle(.switch)
                 Toggle("Includi quote arretrate da recuperare", isOn: $includeRecoveries)
                     .toggleStyle(.switch)
@@ -194,7 +194,7 @@ struct SimulatorResultCard: View {
 
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(result.projection.margin >= 0 ? "Avanzo dopo scadenza" : "Scoperto dopo scadenza")
+                        Text(result.projection.margin >= 0 ? "Margine previsto" : "Scoperto previsto")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         MoneyText(value: result.projection.margin, style: .system(size: 26, weight: .bold, design: .rounded), color: result.statusColor)
@@ -220,9 +220,9 @@ struct SimulatorResultCard: View {
                         tint: result.requiredIncomeToCoverDeficit > 0 ? AppColor.coral : AppColor.sage
                     )
                     SimulationMetricTile(
-                        title: "Quota rinviabile",
+                        title: "Margine utilizzabile",
                         value: MoneyFormatting.money(result.skippableAmount),
-                        subtitle: "senza scendere sotto zero",
+                        subtitle: "prima di andare sotto zero",
                         symbol: "minus.circle.fill",
                         tint: AppColor.amber
                     )

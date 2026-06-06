@@ -251,6 +251,118 @@ final class AccantonaCalculationTests: XCTestCase {
         XCTAssertMoneyEqual(projection.remainingDue, decimal("650"))
     }
 
+    func testFirstAdvanceDoesNotCoverBalanceOnlyDeadline() {
+        let parameters = TaxParameters(year: 2026)
+        let balanceOnly = TaxDeadline(title: "Saldo imposta sostitutiva", date: date("2026-06-30"), taxYear: 2025, estimatedAmount: decimal("1000"))
+        let firstAdvance = TaxPayment(
+            paymentDate: date("2026-06-20"),
+            taxYear: 2026,
+            type: .firstAdvance,
+            section: .erario,
+            code: "1791",
+            amountDebt: decimal("350"),
+            amountPaid: decimal("350")
+        )
+
+        let projection = DeadlineCoverageCalculator.projection(
+            for: balanceOnly,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [firstAdvance],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(projection.paidByF24, decimal("0"))
+        XCTAssertMoneyEqual(projection.remainingDue, decimal("1000"))
+    }
+
+    func testExplicitLateF24StillCoversLinkedDeadline() {
+        let parameters = TaxParameters(year: 2026)
+        let june = TaxDeadline(title: "Saldo + primo acconto", date: date("2026-06-30"), taxYear: 2025, estimatedAmount: decimal("1000"))
+        let latePayment = TaxPayment(
+            paymentDate: date("2026-07-03"),
+            taxYear: 2025,
+            deadlineId: june.id,
+            type: .balance,
+            section: .erario,
+            code: "1790",
+            amountDebt: decimal("1000"),
+            amountPaid: decimal("1000")
+        )
+
+        let projection = DeadlineCoverageCalculator.projection(
+            for: june,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [latePayment],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(projection.paidByF24, decimal("1000"))
+        XCTAssertMoneyEqual(projection.remainingDue, decimal("0"))
+        XCTAssertEqual(projection.certaintyTitle, "Pagato")
+    }
+
+    func testNovemberStampDutyDeadlineDoesNotMatchSecondAdvance() {
+        let parameters = TaxParameters(year: 2026)
+        let stampDuty = TaxDeadline(title: "Bollo fatture", date: date("2026-11-30"), taxYear: 2026, estimatedAmount: decimal("50"))
+        let secondAdvance = TaxPayment(
+            paymentDate: date("2026-11-20"),
+            taxYear: 2026,
+            type: .secondAdvance,
+            section: .erario,
+            code: "1792",
+            amountDebt: decimal("50"),
+            amountPaid: decimal("50")
+        )
+
+        let projection = DeadlineCoverageCalculator.projection(
+            for: stampDuty,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [secondAdvance],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(projection.paidByF24, decimal("0"))
+        XCTAssertMoneyEqual(projection.remainingDue, decimal("50"))
+    }
+
+    func testPaidDeadlineWithZeroCashIsStillCovered() {
+        let parameters = TaxParameters(year: 2026)
+        let deadline = TaxDeadline(title: "Saldo + primo acconto", date: date("2026-06-30"), taxYear: 2025, estimatedAmount: decimal("1000"))
+        let payment = TaxPayment(
+            paymentDate: date("2026-06-20"),
+            taxYear: 2025,
+            deadlineId: deadline.id,
+            type: .balance,
+            section: .erario,
+            code: "1790",
+            amountDebt: decimal("1000"),
+            amountPaid: decimal("1000")
+        )
+
+        let projection = DeadlineCoverageCalculator.projection(
+            for: deadline,
+            parameters: parameters,
+            invoices: [],
+            reserves: [],
+            taxPayments: [payment],
+            snapshots: [],
+            movements: []
+        )
+
+        XCTAssertMoneyEqual(projection.remainingDue, decimal("0"))
+        XCTAssertMoneyEqual(projection.margin, decimal("0"))
+        XCTAssertEqual(projection.risk, .covered)
+    }
+
     func testF24CreditDoesNotBecomeNegativeCoverage() {
         let parameters = TaxParameters(year: 2026)
         let november = TaxDeadline(title: "Secondo acconto", date: date("2026-11-30"), taxYear: 2026, estimatedAmount: decimal("1000"))

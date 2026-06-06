@@ -83,9 +83,9 @@ struct TaxPaymentsView: View {
 
     private var deleteMessage: String {
         guard let paymentToDelete else {
-            return "Rimuovero anche il movimento collegato dal conto tasse."
+            return "Rimuoverò anche il movimento collegato dal conto tasse."
         }
-        return "Rimuovero anche il movimento collegato dal conto tasse: \(paymentToDelete.code)."
+        return "Rimuoverò anche il movimento collegato dal conto tasse: \(paymentToDelete.code)."
     }
 
     private var summaryCard: some View {
@@ -210,6 +210,7 @@ struct TaxPaymentEditorSheet: View {
     private var amountDebt: Decimal { MoneyFormatting.parseDecimal(amountDebtText).roundedMoney }
     private var amountCompensated: Decimal { MoneyFormatting.parseDecimal(compensatedText).roundedMoney }
     private var netPaid: Decimal { MoneyFormatting.parseDecimal(netPaidText).roundedMoney }
+    private var parsedTaxYear: Int? { Int(taxYearText.trimmingCharacters(in: .whitespacesAndNewlines)) }
     private var validation: TaxPaymentAccounting.Validation? {
         TaxPaymentAccounting.validation(
             type: type,
@@ -222,6 +223,7 @@ struct TaxPaymentEditorSheet: View {
     }
 
     private var canSave: Bool {
+        parsedTaxYear != nil &&
         !(validation?.isBlocking ?? false)
     }
 
@@ -365,7 +367,7 @@ struct TaxPaymentEditorSheet: View {
         )
 
         target.paymentDate = date
-        target.taxYear = Int(taxYearText) ?? target.taxYear
+        target.taxYear = parsedTaxYear ?? target.taxYear
         target.deadlineId = deadlineId
         target.type = type
         target.section = section

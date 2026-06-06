@@ -151,6 +151,10 @@ enum DeadlineCoverageCalculator {
         futureReserves: Decimal,
         threshold: Decimal
     ) -> DeadlineRisk {
+        if remainingDue <= 0 {
+            return .covered
+        }
+
         if currentBalance >= remainingDue {
             return currentBalance - remainingDue < threshold ? .lowMargin : .covered
         }
@@ -184,38 +188,57 @@ enum DeadlineCoverageCalculator {
 
     private static func matchingPayments(for deadline: TaxDeadline, payments: [TaxPayment]) -> [TaxPayment] {
         payments.filter { payment in
-            paymentMatchesDeadline(payment, deadline: deadline)
-            && payment.paymentDate <= deadline.date
-        }
-    }
+            if let deadlineId = payment.deadlineId {
+                return deadlineId == deadline.id
+            }
 
-    private static func paymentMatchesDeadline(_ payment: TaxPayment, deadline: TaxDeadline) -> Bool {
-        if let deadlineId = payment.deadlineId {
-            return deadlineId == deadline.id
+            return paymentMatchesDeadlineKind(payment, deadline: deadline)
+                && payment.paymentDate <= deadline.date
         }
-
-        return paymentMatchesDeadlineKind(payment, deadline: deadline)
     }
 
     private static func paymentMatchesDeadlineKind(_ payment: TaxPayment, deadline: TaxDeadline) -> Bool {
-        let title = deadline.title.lowercased()
-        let isJuneLike = title.contains("saldo") || title.contains("primo") || title.contains("giugno")
-        let isNovemberLike = title.contains("secondo") || title.contains("novembre")
+        let kind = DeadlineKind(deadline: deadline)
 
         switch payment.type {
         case .balance:
-            return payment.taxYear == deadline.taxYear && isJuneLike
+            return payment.taxYear == deadline.taxYear && kind.includesBalance
         case .firstAdvance:
-            if isJuneLike, payment.taxYear == deadline.taxYear + 1 {
+            guard kind.includesFirstAdvance else { return false }
+            if payment.taxYear == deadline.taxYear + 1 {
                 return true
             }
-            return payment.taxYear == deadline.taxYear && isJuneLike
+            return payment.taxYear == deadline.taxYear
         case .secondAdvance:
-            return payment.taxYear == deadline.taxYear && isNovemberLike
+            return payment.taxYear == deadline.taxYear && kind.includesSecondAdvance
         case .stampDuty:
-            return payment.taxYear == deadline.taxYear && title.contains("bollo")
+            return payment.taxYear == deadline.taxYear && kind.includesStampDuty
         case .other:
             return false
+        }
+    }
+
+    private struct DeadlineKind {
+        let includesBalance: Bool
+        let includesFirstAdvance: Bool
+        let includesSecondAdvance: Bool
+        let includesStampDuty: Bool
+
+        init(deadline: TaxDeadline) {
+            let title = deadline.title.lowercased()
+            let month = Calendar.current.component(.month, from: deadline.date)
+            let mentionsBalance = title.contains("saldo")
+            let mentionsFirstAdvance = title.contains("primo")
+            let mentionsSecondAdvance = title.contains("secondo")
+            let mentionsStampDuty = title.contains("bollo")
+            let mentionsJune = title.contains("giugno") || month == 6
+            let mentionsNovember = title.contains("novembre") || month == 11
+            let isGenericJuneDeadline = mentionsJune && !mentionsBalance && !mentionsFirstAdvance && !mentionsStampDuty
+
+            includesBalance = mentionsBalance || isGenericJuneDeadline
+            includesFirstAdvance = mentionsFirstAdvance || isGenericJuneDeadline
+            includesSecondAdvance = (mentionsSecondAdvance || mentionsNovember) && !mentionsStampDuty
+            includesStampDuty = mentionsStampDuty
         }
     }
 }

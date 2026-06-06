@@ -61,7 +61,7 @@ struct ReservesView: View {
             VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
                     title: "Accantonamenti",
-                    subtitle: "Ogni incasso genera una quota da trasferire sul conto tasse. Qui vedi cosa manca e cosa e gia stato spostato.",
+                    subtitle: "Ogni incasso genera una quota da trasferire sul conto tasse. Qui vedi cosa manca e cosa è già stato spostato.",
                     symbol: "tray.and.arrow.down.fill",
                     tint: AppColor.petrol
                 )
@@ -106,7 +106,7 @@ struct ReservesView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Quote fiscali dagli incassi")
                             .font(.headline)
-                        Text("Da trasferire o gia sul conto tasse")
+                        Text("Da trasferire o già sul conto tasse")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -123,7 +123,7 @@ struct ReservesView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 6) {
-                        Text("Gia sul conto tasse")
+                        Text("Già sul conto tasse")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
                         MoneyText(value: totalReserved, style: .title3.weight(.bold), color: AppColor.petrol)
@@ -426,7 +426,7 @@ struct ReserveAmountSummary: View {
         VStack(spacing: 0) {
             DetailRow(title: "Incasso collegato", value: MoneyFormatting.money(incomeAmount))
             DetailRow(title: "Da mettere da parte", value: MoneyFormatting.money(dueAmount))
-            DetailRow(title: "Gia trasferito", value: MoneyFormatting.money(reservedAmount))
+            DetailRow(title: "Già trasferito", value: MoneyFormatting.money(reservedAmount))
             DetailRow(title: "Ancora da trasferire", value: MoneyFormatting.money(missingAmount))
         }
         .background(.regularMaterial.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))

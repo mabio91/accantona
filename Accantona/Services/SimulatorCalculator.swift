@@ -54,11 +54,11 @@ struct SimulationResult {
     var isCovered: Bool { projection.margin >= 0 }
 
     var statusTitle: String {
-        isCovered ? "Sei coperto" : "Vai sotto"
+        projection.risk.title
     }
 
     var statusColor: Color {
-        isCovered ? AppColor.sage : AppColor.coral
+        projection.risk.color
     }
 }
 
