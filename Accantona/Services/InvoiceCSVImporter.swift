@@ -70,6 +70,33 @@ struct InvoiceDuplicateKey: Hashable {
     }
 }
 
+struct InvoiceImportParameterResolution {
+    let parameter: TaxParameters
+    let shouldInsert: Bool
+}
+
+enum InvoiceImportAccounting {
+    static func parameter(
+        forFiscalYear fiscalYear: Int,
+        parameters: [TaxParameters],
+        createsDefaultForMissingYear: Bool
+    ) -> InvoiceImportParameterResolution {
+        if let exact = parameters.first(where: { $0.year == fiscalYear }) {
+            return InvoiceImportParameterResolution(parameter: exact, shouldInsert: false)
+        }
+
+        if createsDefaultForMissingYear {
+            return InvoiceImportParameterResolution(parameter: TaxParameters(year: fiscalYear), shouldInsert: true)
+        }
+
+        if let resolved = TaxParameterResolver.parameter(forFiscalYear: fiscalYear, parameters: parameters) {
+            return InvoiceImportParameterResolution(parameter: resolved, shouldInsert: false)
+        }
+
+        return InvoiceImportParameterResolution(parameter: TaxParameters(year: fiscalYear), shouldInsert: true)
+    }
+}
+
 enum InvoiceCSVImporter {
     static let expectedHeaders = [
         "numero",

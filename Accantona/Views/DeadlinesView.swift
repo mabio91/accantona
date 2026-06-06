@@ -237,7 +237,13 @@ struct DeadlineEditorSheet: View {
     private var canSave: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         && Int(taxYearText) != nil
-        && MoneyFormatting.parseDecimal(estimatedAmountText) >= 0
+        && parsedEstimatedAmount.map { $0 >= 0 } == true
+    }
+
+    private var parsedEstimatedAmount: Decimal? {
+        let trimmed = estimatedAmountText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return 0 }
+        return MoneyFormatting.parseDecimalOrNil(trimmed)?.roundedMoney
     }
 
     var body: some View {
@@ -298,13 +304,13 @@ struct DeadlineEditorSheet: View {
             title: title,
             date: date,
             taxYear: Int(taxYearText) ?? Calendar.current.component(.year, from: .now),
-            estimatedAmount: MoneyFormatting.parseDecimal(estimatedAmountText).roundedMoney
+            estimatedAmount: parsedEstimatedAmount ?? 0
         )
 
         target.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         target.date = date
         target.taxYear = Int(taxYearText) ?? target.taxYear
-        target.estimatedAmount = MoneyFormatting.parseDecimal(estimatedAmountText).roundedMoney
+        target.estimatedAmount = parsedEstimatedAmount ?? target.estimatedAmount
         target.certainty = certainty
         target.notes = notes
 

@@ -35,8 +35,7 @@ enum TaxParameterSanitizer {
 
 enum TaxParameterInputParser {
     static func percent(_ text: String, fallback: Decimal = 0, allowsWhole: Bool = false) -> Decimal {
-        let value = MoneyFormatting.parseDecimal(text)
-        guard value > 0 else { return fallback }
+        guard let value = MoneyFormatting.parseDecimalOrNil(text), value > 0 else { return fallback }
         return normalizedPercent(value, allowsWhole: allowsWhole)
     }
 

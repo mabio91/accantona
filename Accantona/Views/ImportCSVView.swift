@@ -18,7 +18,7 @@ struct ImportCSVView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 ScreenIntro(
-                    title: "Import CSV",
+                    title: "Importa CSV",
                     subtitle: "Carica fatture nel formato Accantona, controlla l'anteprima e salva solo le righe valide.",
                     symbol: "square.and.arrow.down.fill",
                     tint: AppColor.petrol
@@ -43,7 +43,7 @@ struct ImportCSVView: View {
             }
             .padding(14)
         }
-        .navigationTitle("Import CSV")
+        .navigationTitle("Importa CSV")
         .appBackground()
         .alert(persistenceAlert?.title ?? "Errore", isPresented: persistenceAlertBinding) {
             Button("OK", role: .cancel) { }
@@ -148,7 +148,7 @@ struct ImportCSVView: View {
     private func summaryPanel(_ summary: CSVImportSummary) -> some View {
         GlassSurface(cornerRadius: 18, tint: AppColor.sage) {
             VStack(alignment: .leading, spacing: 14) {
-                StatusBadge("Import completato", symbol: "checkmark.seal.fill", color: AppColor.sage)
+                StatusBadge("Importazione completata", symbol: "checkmark.seal.fill", color: AppColor.sage)
                 HStack(spacing: 10) {
                     ImportStatTile(title: "Importate", value: summary.imported, tint: AppColor.sage)
                     ImportStatTile(title: "Saltate", value: summary.skipped, tint: AppColor.amber)
@@ -199,7 +199,8 @@ struct ImportCSVView: View {
         )
 
         let calendar = Calendar.current
-        var parametersByYear = Dictionary(uniqueKeysWithValues: parameters.map { ($0.year, $0) })
+        var parameterCatalog = parameters
+        let createsDefaultParameters = parameterCatalog.isEmpty
 
         for row in preview.importableRows {
             guard let values = row.values else { continue }
@@ -222,10 +223,16 @@ struct ImportCSVView: View {
             summary.imported += 1
 
             if let paidDate = values.paidDate {
-                let parameter = parameter(
+                let resolution = InvoiceImportAccounting.parameter(
                     forFiscalYear: calendar.component(.year, from: paidDate),
-                    cache: &parametersByYear
+                    parameters: parameterCatalog,
+                    createsDefaultForMissingYear: createsDefaultParameters
                 )
+                if resolution.shouldInsert {
+                    modelContext.insert(resolution.parameter)
+                    parameterCatalog.append(resolution.parameter)
+                }
+                let parameter = resolution.parameter
                 let breakdown = TaxCalculator.reserveBreakdown(for: values.amount, parameters: parameter)
                 let reservedAmount = min(values.reservedAmount, breakdown.prudentialReserve).roundedMoney
                 let reserve = ReserveEntry(
@@ -262,17 +269,6 @@ struct ImportCSVView: View {
         } catch {
             persistenceAlert = PersistenceAlert(error)
         }
-    }
-
-    private func parameter(forFiscalYear fiscalYear: Int, cache: inout [Int: TaxParameters]) -> TaxParameters {
-        if let parameter = cache[fiscalYear] {
-            return parameter
-        }
-
-        let parameter = TaxParameters(year: fiscalYear)
-        modelContext.insert(parameter)
-        cache[fiscalYear] = parameter
-        return parameter
     }
 
     private var persistenceAlertBinding: Binding<Bool> {

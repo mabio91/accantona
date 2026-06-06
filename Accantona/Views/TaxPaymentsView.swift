@@ -207,9 +207,12 @@ struct TaxPaymentEditorSheet: View {
         _notes = State(initialValue: payment?.notes ?? "")
     }
 
-    private var amountDebt: Decimal { MoneyFormatting.parseDecimal(amountDebtText).roundedMoney }
-    private var amountCompensated: Decimal { MoneyFormatting.parseDecimal(compensatedText).roundedMoney }
-    private var netPaid: Decimal { MoneyFormatting.parseDecimal(netPaidText).roundedMoney }
+    private var amountDebt: Decimal { parsedAmountDebt ?? 0 }
+    private var amountCompensated: Decimal { parsedAmountCompensated ?? 0 }
+    private var netPaid: Decimal { parsedNetPaid ?? 0 }
+    private var parsedAmountDebt: Decimal? { optionalDecimal(amountDebtText) }
+    private var parsedAmountCompensated: Decimal? { optionalDecimal(compensatedText) }
+    private var parsedNetPaid: Decimal? { optionalDecimal(netPaidText) }
     private var parsedTaxYear: Int? { Int(taxYearText.trimmingCharacters(in: .whitespacesAndNewlines)) }
     private var validation: TaxPaymentAccounting.Validation? {
         TaxPaymentAccounting.validation(
@@ -224,6 +227,9 @@ struct TaxPaymentEditorSheet: View {
 
     private var canSave: Bool {
         parsedTaxYear != nil &&
+        parsedAmountDebt != nil &&
+        parsedAmountCompensated != nil &&
+        parsedNetPaid != nil &&
         !(validation?.isBlocking ?? false)
     }
 
@@ -353,6 +359,7 @@ struct TaxPaymentEditorSheet: View {
     }
 
     private func save() {
+        guard canSave else { return }
         let target = payment ?? TaxPayment(
             paymentDate: date,
             taxYear: Int(taxYearText) ?? Calendar.current.component(.year, from: .now) - 1,
@@ -395,6 +402,12 @@ struct TaxPaymentEditorSheet: View {
         } else {
             modelContext.insert(TaxPaymentAccounting.makeLedgerMovement(for: payment))
         }
+    }
+
+    private func optionalDecimal(_ text: String) -> Decimal? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return 0 }
+        return MoneyFormatting.parseDecimalOrNil(trimmed)?.roundedMoney
     }
 
     private var persistenceAlertBinding: Binding<Bool> {

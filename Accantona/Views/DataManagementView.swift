@@ -202,7 +202,7 @@ struct DataManagementView: View {
     private func deleteAllData() {
         do {
             let deleted = try AppBackupService.deleteAllData(in: modelContext)
-            activeAlert = .notice(title: "Dati eliminati", message: "\(deleted.totalRecords) record rimossi. Il setup iniziale si aprira automaticamente.")
+            activeAlert = .notice(title: "Dati eliminati", message: "\(deleted.totalRecords) record rimossi. Il setup iniziale si aprirà automaticamente.")
         } catch {
             activeAlert = .error(title: "Cancellazione non riuscita", message: error.localizedDescription)
         }

@@ -99,26 +99,62 @@ struct TaxParametersView: View {
                 }
                 .primaryActionStyle()
                 .padding(.top, 4)
+                .disabled(!canSave)
             }
         }
     }
 
+    private var canSave: Bool {
+        Int(yearText.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+        && parsedSubstituteTaxRate.map { $0 > 0 } == true
+        && parsedProfitability.map { $0 > 0 } == true
+        && parsedInpsRate.map { $0 >= 0 } == true
+        && parsedExtraRate.map { $0 >= 0 } == true
+        && parsedThreshold.map { $0 >= 0 } == true
+    }
+
+    private var parsedSubstituteTaxRate: Decimal? {
+        parsePercentOrNil(substituteTaxRateText)
+    }
+
+    private var parsedProfitability: Decimal? {
+        parsePercentOrNil(profitabilityText, allowsWhole: true)
+    }
+
+    private var parsedInpsRate: Decimal? {
+        parsePercentOrNil(inpsText, allowsZero: true)
+    }
+
+    private var parsedExtraRate: Decimal? {
+        parsePercentOrNil(extraText, allowsZero: true)
+    }
+
+    private var parsedThreshold: Decimal? {
+        MoneyFormatting.parseDecimalOrNil(thresholdText)?.roundedMoney
+    }
+
     private func save() {
-        let year = Int(yearText) ?? Calendar.current.component(.year, from: .now)
+        guard canSave,
+              let year = Int(yearText.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let substituteTaxRate = parsedSubstituteTaxRate,
+              let profitability = parsedProfitability,
+              let inpsRate = parsedInpsRate,
+              let extraRate = parsedExtraRate,
+              let threshold = parsedThreshold else { return }
         if let existing = parameters.first(where: { $0.year == year }) {
-            existing.substituteTaxRate = parsePercent(substituteTaxRateText)
-            existing.profitabilityCoefficient = parsePercent(profitabilityText, allowsWhole: true)
-            existing.inpsRate = parsePercent(inpsText)
-            existing.prudentialExtraRate = parsePercent(extraText)
-            existing.minimumMarginThreshold = parseDecimal(thresholdText)
+            existing.substituteTaxRate = substituteTaxRate
+            existing.profitabilityCoefficient = profitability
+            existing.inpsRate = inpsRate
+            existing.prudentialExtraRate = extraRate
+            existing.minimumMarginThreshold = threshold
         } else {
             modelContext.insert(TaxParameters(
                 year: year,
-                substituteTaxRate: parsePercent(substituteTaxRateText),
-                profitabilityCoefficient: parsePercent(profitabilityText, allowsWhole: true),
-                inpsRate: parsePercent(inpsText),
-                prudentialExtraRate: parsePercent(extraText),
-                minimumMarginThreshold: parseDecimal(thresholdText)
+                substituteTaxRate: substituteTaxRate,
+                profitabilityCoefficient: profitability,
+                inpsRate: inpsRate,
+                prudentialExtraRate: extraRate,
+                minimumMarginThreshold: threshold
             ))
         }
         do {
@@ -128,12 +164,11 @@ struct TaxParametersView: View {
         }
     }
 
-    private func parsePercent(_ text: String, allowsWhole: Bool = false) -> Decimal {
-        TaxParameterInputParser.percent(text, allowsWhole: allowsWhole)
-    }
-
-    private func parseDecimal(_ text: String) -> Decimal {
-        MoneyFormatting.parseDecimal(text)
+    private func parsePercentOrNil(_ text: String, allowsWhole: Bool = false, allowsZero: Bool = false) -> Decimal? {
+        guard let value = MoneyFormatting.parseDecimalOrNil(text) else { return nil }
+        if value == 0, allowsZero { return 0 }
+        guard value > 0 else { return nil }
+        return TaxParameterInputParser.normalizedPercent(value, allowsWhole: allowsWhole)
     }
 
     private var persistenceAlertBinding: Binding<Bool> {

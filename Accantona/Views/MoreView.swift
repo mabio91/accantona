@@ -41,7 +41,7 @@ struct MoreView: View {
                         ImportCSVView()
                     } label: {
                         MoreActionRow(
-                            title: "Import CSV",
+                            title: "Importa CSV",
                             subtitle: "Carica fatture dal template Accantona",
                             symbol: "square.and.arrow.down.fill",
                             tint: AppColor.amber
@@ -102,7 +102,7 @@ struct MoreView: View {
                 Panel(title: "Archivio locale", subtitle: "Dati su dispositivo, inserimento controllato e calcoli verificabili.", symbol: "externaldrive.fill", tint: AppColor.amber) {
                     VStack(spacing: 12) {
                         InfoLine(symbol: "square.and.arrow.up", title: "Backup JSON e ripristino completo")
-                        InfoLine(symbol: "doc.text.magnifyingglass", title: "Import CSV standardizzato")
+                        InfoLine(symbol: "doc.text.magnifyingglass", title: "Importazione CSV standardizzata")
                         InfoLine(symbol: "lock.doc", title: "Dati locali con SwiftData")
                     }
                 }

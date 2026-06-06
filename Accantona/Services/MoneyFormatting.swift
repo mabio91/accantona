@@ -38,10 +38,16 @@ enum MoneyFormatting {
     }
 
     static func parseDecimal(_ text: String) -> Decimal {
+        parseDecimalOrNil(text) ?? 0
+    }
+
+    static func parseDecimalOrNil(_ text: String) -> Decimal? {
         let compact = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "€", with: "")
             .replacingOccurrences(of: "%", with: "")
             .replacingOccurrences(of: " ", with: "")
+        guard !compact.isEmpty else { return nil }
         let normalized: String
         if compact.contains(",") {
             normalized = compact
@@ -50,7 +56,9 @@ enum MoneyFormatting {
         } else {
             normalized = compact
         }
-        return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")) ?? 0
+        let decimalPattern = #"^[+-]?([0-9]+(\.[0-9]+)?|\.[0-9]+)$"#
+        guard normalized.range(of: decimalPattern, options: .regularExpression) != nil else { return nil }
+        return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX"))
     }
 }
 

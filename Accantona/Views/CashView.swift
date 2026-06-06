@@ -159,7 +159,7 @@ struct CashView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .secondaryActionStyle()
-                .disabled(balanceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || parseDecimal(balanceText) < 0)
+                .disabled(parsedBalance.map { $0 >= 0 } != true)
             }
         }
     }
@@ -184,14 +184,14 @@ struct CashView: View {
     }
 
     private func reconcileBalance() {
-        let newBalance = parseDecimal(balanceText)
+        guard let newBalance = parsedBalance else { return }
         modelContext.insert(TaxAccountSnapshot(balance: newBalance, updatedAt: .now))
         balanceText = ""
         saveChanges()
     }
 
-    private func parseDecimal(_ text: String) -> Decimal {
-        MoneyFormatting.parseDecimal(text)
+    private var parsedBalance: Decimal? {
+        MoneyFormatting.parseDecimalOrNil(balanceText)?.roundedMoney
     }
 
     private func saveChanges() {

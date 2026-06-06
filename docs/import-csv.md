@@ -1,4 +1,4 @@
-# Import CSV fatture Accantona
+# Importazione CSV fatture Accantona
 
 Accantona importa solo CSV standardizzati. Non prova a interpretare file Excel personali o fogli con colonne arbitrarie.
 
@@ -37,5 +37,5 @@ numero,cliente,descrizione,data_emissione,data_incasso_prevista,data_incasso,imp
 ## Effetti import
 
 - Ogni riga valida crea una `Invoice`.
-- Se `data_incasso` e presente, viene creato anche un `ReserveEntry` calcolato con i parametri fiscali correnti.
-- Se `importo_accantonato` e valorizzato, viene creato un movimento ledger `Accantonamento import CSV`.
+- Se `data_incasso` è presente, viene creato anche un `ReserveEntry` calcolato con il parametro fiscale più adatto all'anno di incasso.
+- Se `importo_accantonato` è valorizzato, viene creato un movimento ledger `Accantonamento import CSV`.

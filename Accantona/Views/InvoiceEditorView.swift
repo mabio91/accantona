@@ -5,6 +5,7 @@ struct InvoiceEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaxParameters.year, order: .reverse) private var parameters: [TaxParameters]
+    @Query(sort: \Invoice.issueDate, order: .reverse) private var invoices: [Invoice]
 
     @State private var number = ""
     @State private var client = ""
@@ -38,9 +39,9 @@ struct InvoiceEditorView: View {
                     }
                 }
 
-                Panel(title: "Importi", subtitle: "Usa virgola o punto per i decimali.", symbol: "eurosign.circle.fill", tint: AppColor.petrol) {
+                Panel(title: "Importi", subtitle: "Il bollo resta separato e non entra nella quota tasse/INPS.", symbol: "eurosign.circle.fill", tint: AppColor.petrol) {
                     VStack(spacing: 14) {
-                        AppTextField(title: "Importo incassato o imponibile", placeholder: "3333,34", text: $amountText, keyboard: .decimalPad)
+                        AppTextField(title: "Imponibile o incasso senza bollo", placeholder: "3333,34", text: $amountText, keyboard: .decimalPad)
                         AppTextField(title: "Bollo", placeholder: "2,00", text: $stampDutyText, keyboard: .decimalPad)
                     }
                 }
@@ -68,10 +69,25 @@ struct InvoiceEditorView: View {
                         if status == .paid {
                             DatePicker("Data incasso effettiva", selection: $paidDate, displayedComponents: .date)
                                 .datePickerStyle(.compact)
+                            Text("Alla conferma verrà generata una quota da trasferire in Accantonamenti.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .padding(12)
                     .background(.background.opacity(0.42), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+
+                if isDuplicateInvoice {
+                    Panel(
+                        title: "Fattura già presente",
+                        subtitle: "Numero, cliente e data emissione coincidono con una fattura esistente.",
+                        symbol: "exclamationmark.triangle.fill",
+                        tint: AppColor.coral
+                    ) {
+                        EmptyView()
+                    }
                 }
 
                 Button {
@@ -100,9 +116,30 @@ struct InvoiceEditorView: View {
     }
 
     private var canSave: Bool {
-        !number.trimmingCharacters(in: .whitespaces).isEmpty
-        && !client.trimmingCharacters(in: .whitespaces).isEmpty
-        && parseDecimal(amountText) > 0
+        !number.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        && !client.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        && parsedAmount.map { $0 > 0 } == true
+        && parsedStampDuty != nil
+        && !isDuplicateInvoice
+    }
+
+    private var parsedAmount: Decimal? {
+        MoneyFormatting.parseDecimalOrNil(amountText)?.roundedMoney
+    }
+
+    private var parsedStampDuty: Decimal? {
+        let trimmed = stampDutyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return 0 }
+        return MoneyFormatting.parseDecimalOrNil(trimmed)?.roundedMoney
+    }
+
+    private var isDuplicateInvoice: Bool {
+        guard !number.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !client.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        let candidate = InvoiceDuplicateKey(number: number, client: client, issueDate: issueDate)
+        return invoices.contains { InvoiceDuplicateKey(invoice: $0) == candidate }
     }
 
     private func save() {
@@ -116,8 +153,8 @@ struct InvoiceEditorView: View {
             issueDate: issueDate,
             expectedPaymentDate: hasExpectedPaymentDate ? expectedPaymentDate : nil,
             paidDate: effectivePaidDate,
-            amount: MoneyFormatting.parseDecimal(amountText).roundedMoney,
-            stampDuty: MoneyFormatting.parseDecimal(stampDutyText).roundedMoney,
+            amount: parsedAmount ?? 0,
+            stampDuty: parsedStampDuty ?? 0,
             status: status,
             managementYear: Calendar.current.component(.year, from: issueDate),
             fiscalYear: fiscalYear
@@ -145,8 +182,6 @@ struct InvoiceEditorView: View {
             persistenceAlert = PersistenceAlert(error)
         }
     }
-
-    private func parseDecimal(_ text: String) -> Decimal { MoneyFormatting.parseDecimal(text) }
 
     private var persistenceAlertBinding: Binding<Bool> {
         Binding(

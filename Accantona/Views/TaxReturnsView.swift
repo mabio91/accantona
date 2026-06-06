@@ -307,7 +307,25 @@ struct TaxReturnEditorSheet: View {
     }
 
     private var canSave: Bool {
-        Int(declarationYearText) != nil && Int(taxPeriodText) != nil
+        Int(declarationYearText.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+        && Int(taxPeriodText.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
+        && allDecimalInputsAreValid
+    }
+
+    private var allDecimalInputsAreValid: Bool {
+        [
+            revenuesText,
+            grossIncomeText,
+            deductedContributionsText,
+            taxableNetIncomeText,
+            substituteTaxDueText,
+            substituteTaxAdvancesText,
+            substituteTaxBalanceText,
+            inpsDueText,
+            inpsAdvancesText,
+            inpsBalanceText
+        ].allSatisfy { optionalMoney($0) != nil }
+        && optionalCoefficient(coefficientText) != nil
     }
 
     private var quickExamples: some View {
@@ -384,9 +402,10 @@ struct TaxReturnEditorSheet: View {
     }
 
     private func save() {
+        guard canSave else { return }
         let target = summary ?? TaxReturnSummary()
-        target.declarationYear = Int(declarationYearText) ?? target.declarationYear
-        target.taxPeriod = Int(taxPeriodText) ?? target.taxPeriod
+        target.declarationYear = Int(declarationYearText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? target.declarationYear
+        target.taxPeriod = Int(taxPeriodText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? target.taxPeriod
         target.revenues = parseMoney(revenuesText)
         target.profitabilityCoefficient = parseCoefficient(coefficientText)
         target.grossIncome = parseMoney(grossIncomeText)
@@ -412,11 +431,23 @@ struct TaxReturnEditorSheet: View {
     }
 
     private func parseMoney(_ text: String) -> Decimal {
-        MoneyFormatting.parseDecimal(text).roundedMoney
+        optionalMoney(text) ?? 0
     }
 
     private func parseCoefficient(_ text: String) -> Decimal {
-        let value = MoneyFormatting.parseDecimal(text)
+        optionalCoefficient(text) ?? 0
+    }
+
+    private func optionalMoney(_ text: String) -> Decimal? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return 0 }
+        return MoneyFormatting.parseDecimalOrNil(trimmed)?.roundedMoney
+    }
+
+    private func optionalCoefficient(_ text: String) -> Decimal? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return 0 }
+        guard let value = MoneyFormatting.parseDecimalOrNil(trimmed) else { return nil }
         return value > 1 ? value / 100 : value
     }
 

@@ -15,9 +15,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 14) {
                 header
 
-                if let latestBreakdown {
-                    ReserveBreakdownView(breakdown: latestBreakdown)
-                }
+                latestBreakdownSection
 
                 if let projection = nextDeadlineProjection {
                     DashboardDeadlineCard(projection: projection)
@@ -52,6 +50,17 @@ struct DashboardView: View {
         }
 
         return TaxCalculator.reserveBreakdown(for: invoice.amount, parameters: parameter)
+    }
+
+    @ViewBuilder
+    private var latestBreakdownSection: some View {
+        if let invoice = latestReferenceInvoice, let latestBreakdown {
+            ReserveBreakdownView(
+                breakdown: latestBreakdown,
+                title: "Residuo ultimo incasso",
+                subtitle: "Calcolato su \(invoice.number) · \(invoice.client), non sul totale del conto tasse."
+            )
+        }
     }
 
     private var nextDeadline: TaxDeadline? {

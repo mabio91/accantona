@@ -174,12 +174,14 @@ struct CoverageBar: View {
 
 struct ReserveBreakdownView: View {
     let breakdown: ReserveBreakdown
+    var title = "Resta dopo accantonamento"
+    var subtitle = "Parte dell'incasso che resta usabile dopo aver messo da parte tasse e INPS."
 
     var body: some View {
         GlassSurface(cornerRadius: 18, tint: AppColor.mint) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
-                    Label("Resta dopo accantonamento", systemImage: "wallet.pass.fill")
+                    Label(title, systemImage: "wallet.pass.fill")
                         .font(.headline)
                         .lineLimit(2)
                         .minimumScaleFactor(0.82)
@@ -190,7 +192,7 @@ struct ReserveBreakdownView: View {
                 }
 
                 MoneyText(value: breakdown.availableAfterReserve, style: .system(size: 28, weight: .bold, design: .rounded), color: AppColor.sage)
-                Text("Parte dell'incasso che resta usabile dopo aver messo da parte tasse e INPS.")
+                Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

@@ -14,6 +14,14 @@ final class AccantonaCalculationTests: XCTestCase {
         XCTAssertEqual(breakdown.appliedRate, decimal("0.330346"))
     }
 
+    func testMoneyFormattingDistinguishesInvalidDecimalFromZero() {
+        XCTAssertEqual(MoneyFormatting.parseDecimalOrNil("0"), decimal("0"))
+        XCTAssertEqual(MoneyFormatting.parseDecimalOrNil("1.234,56 €"), decimal("1234.56"))
+        XCTAssertNil(MoneyFormatting.parseDecimalOrNil(""))
+        XCTAssertNil(MoneyFormatting.parseDecimalOrNil("12abc"))
+        XCTAssertEqual(MoneyFormatting.parseDecimal("12abc"), decimal("0"))
+    }
+
     func testDeadlineCoverageIncludesF24RecoveriesAndFutureInvoices() {
         let parameters = TaxParameters(year: 2026)
         let deadline = TaxDeadline(
@@ -98,6 +106,51 @@ final class AccantonaCalculationTests: XCTestCase {
         XCTAssertEqual(preview.duplicateRows.count, 1)
         XCTAssertEqual(preview.errorRows.count, 1)
         XCTAssertEqual(preview.importableRows.filter { $0.values?.paidDate != nil }.count, 2)
+    }
+
+    func testInvoiceDuplicateKeyNormalizesManualAndImportedDuplicates() {
+        let issueDate = date("2026-01-10")
+        let sameDayWithTime = Calendar.current.date(byAdding: .hour, value: 15, to: issueDate)!
+
+        let stored = InvoiceDuplicateKey(number: " 12/2026 ", client: "Cliente Alpha", issueDate: issueDate)
+        let candidate = InvoiceDuplicateKey(number: "12/2026", client: "cliente alpha ", issueDate: sameDayWithTime)
+
+        XCTAssertEqual(stored, candidate)
+    }
+
+    func testInvoiceImportAccountingReusesConfiguredFiscalParameterFallback() {
+        let oldParameters = TaxParameters(year: 2024, substituteTaxRate: decimal("0.05"))
+        let currentParameters = TaxParameters(year: 2026, substituteTaxRate: decimal("0.15"))
+
+        let resolution = InvoiceImportAccounting.parameter(
+            forFiscalYear: 2025,
+            parameters: [currentParameters, oldParameters],
+            createsDefaultForMissingYear: false
+        )
+
+        XCTAssertFalse(resolution.shouldInsert)
+        XCTAssertEqual(resolution.parameter.year, 2024)
+        XCTAssertEqual(resolution.parameter.substituteTaxRate, decimal("0.05"))
+    }
+
+    func testInvoiceImportAccountingCreatesDefaultOnlyWhenRequested() {
+        let currentParameters = TaxParameters(year: 2026, substituteTaxRate: decimal("0.15"))
+
+        let fallback = InvoiceImportAccounting.parameter(
+            forFiscalYear: 2025,
+            parameters: [currentParameters],
+            createsDefaultForMissingYear: false
+        )
+        let created = InvoiceImportAccounting.parameter(
+            forFiscalYear: 2025,
+            parameters: [currentParameters],
+            createsDefaultForMissingYear: true
+        )
+
+        XCTAssertFalse(fallback.shouldInsert)
+        XCTAssertEqual(fallback.parameter.year, 2026)
+        XCTAssertTrue(created.shouldInsert)
+        XCTAssertEqual(created.parameter.year, 2025)
     }
 
     func testPartialReserveTransferPlansAreCappedAndProgressive() throws {
