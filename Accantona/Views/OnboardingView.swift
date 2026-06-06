@@ -262,8 +262,8 @@ struct OnboardingView: View {
 
     private var substituteTaxRate: Decimal { percentageValue(substituteTaxRateText, fallback: 0.15) }
     private var profitabilityCoefficient: Decimal { percentageValue(profitabilityCoefficientText, fallback: 0.78, allowsWhole: true) }
-    private var inpsRate: Decimal { percentageValue(inpsRateText, fallback: 0.2607) }
-    private var prudentialExtraRate: Decimal { percentageValue(prudentialExtraRateText, fallback: 0.01) }
+    private var inpsRate: Decimal { percentageValue(inpsRateText, fallback: 0.2607, allowsZero: true) }
+    private var prudentialExtraRate: Decimal { percentageValue(prudentialExtraRateText, fallback: 0.01, allowsZero: true) }
     private var appliedReserveRate: Decimal {
         profitabilityCoefficient * (substituteTaxRate + inpsRate) + prudentialExtraRate
     }
@@ -383,8 +383,8 @@ struct OnboardingView: View {
         ))
     }
 
-    private func percentageValue(_ text: String, fallback: Decimal, allowsWhole: Bool = false) -> Decimal {
-        TaxParameterInputParser.percent(text, fallback: fallback, allowsWhole: allowsWhole)
+    private func percentageValue(_ text: String, fallback: Decimal, allowsWhole: Bool = false, allowsZero: Bool = false) -> Decimal {
+        TaxParameterInputParser.percent(text, fallback: fallback, allowsWhole: allowsWhole, allowsZero: allowsZero)
     }
 
     private func percentInput(_ value: Decimal) -> String {

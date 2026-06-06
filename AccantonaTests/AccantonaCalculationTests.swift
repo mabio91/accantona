@@ -635,6 +635,11 @@ final class AccantonaCalculationTests: XCTestCase {
         XCTAssertEqual(TaxParameterInputParser.percent("78", allowsWhole: true), decimal("0.78"))
     }
 
+    func testTaxParameterInputParserAllowsExplicitZeroWhenRequested() {
+        XCTAssertEqual(TaxParameterInputParser.percent("0", fallback: decimal("0.01"), allowsZero: true), decimal("0"))
+        XCTAssertEqual(TaxParameterInputParser.percent("0", fallback: decimal("0.01")), decimal("0.01"))
+    }
+
     func testTaxReturnComparisonUsesLinkedInvoiceFiscalYearForReserves() {
         let invoice = Invoice(
             number: "1/2023",
